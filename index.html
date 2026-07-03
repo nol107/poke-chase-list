@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classeur — Suivi de collection Pokémon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1c1e26; --bg-panel:#22242e; --bg-panel-2:#272a35;
+    --slot-bg:#2a2d3a; --slot-border:#3a3d4c; --slot-border-hover:#565a6e;
+    --gold:#c9a961; --gold-bright:#e2c47f;
+    --green:#4c9a6a; --green-bg:rgba(76,154,106,0.14);
+    --amber:#d0912b; --amber-bg:rgba(208,145,43,0.14);
+    --text:#edebe3; --text-dim:#9a9caa; --text-faint:#686b7a;
+    --danger:#c1584f; --radius:10px;
+    --font-display:'Barlow Condensed',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:radial-gradient(ellipse at top left, rgba(201,169,97,0.05), transparent 55%), var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;}
+  ::selection{background:var(--gold);color:#1c1e26;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--slot-border);border-radius:6px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--slot-border-hover);}
+  button{font-family:var(--font-body);cursor:pointer;}
+  input,select,textarea{font-family:var(--font-body);}
+
+  #app{display:flex;min-height:100vh;}
+  .spine{width:238px;flex-shrink:0;background:linear-gradient(180deg,#1a1c23,#191b21);border-right:1px solid var(--slot-border);padding:24px 0;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .spine-title{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:0.03em;text-transform:uppercase;padding:0 22px 4px;color:var(--gold-bright);}
+  .spine-sub{padding:0 22px 22px;font-size:11px;color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid var(--slot-border);margin-bottom:14px;}
+  .tab{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 22px;margin:0 10px;border-radius:8px;font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:0.02em;color:var(--text-dim);border:1px solid transparent;position:relative;transition:background .15s,color .15s,border-color .15s;cursor:pointer;}
+  .tab .tab-count{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);background:var(--bg-panel-2);padding:2px 7px;border-radius:20px;}
+  .tab:hover{background:var(--bg-panel-2);color:var(--text);}
+  .tab.active{background:var(--slot-bg);color:var(--gold-bright);border-color:var(--slot-border);}
+  .tab.active::before{content:"";position:absolute;left:-10px;top:0;bottom:0;width:3px;border-radius:2px;background:var(--gold);}
+  .tab.active .tab-count{color:var(--gold-bright);background:rgba(201,169,97,0.12);}
+  .spine-foot{margin-top:auto;padding:16px 22px 4px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--slot-border);}
+  .ghost-btn{background:transparent;border:1px solid var(--slot-border);color:var(--text-dim);font-size:12px;padding:8px 10px;border-radius:7px;text-align:left;transition:border-color .15s,color .15s;}
+  .ghost-btn:hover{border-color:var(--gold);color:var(--gold-bright);}
+  .fs-status{font-size:10px;color:var(--text-faint);padding:0 2px;line-height:1.5;}
+  .fs-status.ok{color:var(--green);}
+  .fs-status.warn{color:var(--amber);}
+
+  main{flex:1;min-width:0;padding:28px 34px 60px;}
+  .view-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:14px;}
+  .view-title{font-family:var(--font-display);font-weight:700;font-size:38px;letter-spacing:0.01em;line-height:1;}
+  .view-title small{display:block;font-family:var(--font-body);font-weight:500;font-size:13px;color:var(--text-faint);letter-spacing:0.04em;margin-top:6px;text-transform:none;}
+  .stat-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+  .stat-pill{background:var(--bg-panel);border:1px solid var(--slot-border);border-radius:8px;padding:8px 14px;min-width:88px;}
+  .stat-pill .n{font-family:var(--font-mono);font-size:19px;font-weight:600;}
+  .stat-pill .l{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;}
+  .stat-pill.green .n{color:var(--green);}
+  .stat-pill.amber .n{color:var(--amber);}
+  .stat-pill.gold .n{color:var(--gold-bright);}
+
+  .progress-block{margin:0 0 18px;display:flex;flex-direction:column;gap:7px;max-width:640px;}
+  .pbar-row{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-faint);}
+  .pbar-label{width:110px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.05em;}
+  .pbar{flex:1;height:8px;background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:6px;overflow:hidden;}
+  .pbar > div{height:100%;border-radius:6px;transition:width .3s;}
+  .pbar.fr > div{background:linear-gradient(90deg,var(--green),#6fc492);}
+  .pbar.all > div{background:linear-gradient(90deg,var(--amber),#e5b45e);}
+  .pbar-val{font-family:var(--font-mono);width:88px;text-align:right;flex-shrink:0;}
+
+  .banner{background:rgba(208,145,43,0.1);border:1px solid rgba(208,145,43,0.4);color:#e5b45e;border-radius:9px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .banner button{background:var(--amber);border:none;color:#241a06;font-weight:600;padding:6px 12px;border-radius:6px;font-size:12px;}
+
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:20px;}
+  .search-box{flex:1;min-width:170px;background:var(--bg-panel);border:1px solid var(--slot-border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;}
+  .search-box:focus{outline:none;border-color:var(--gold);}
+  .filter-btn{background:var(--bg-panel);border:1px solid var(--slot-border);color:var(--text-dim);border-radius:8px;padding:8px 11px;font-size:12px;white-space:nowrap;transition:all .15s;}
+  .filter-btn.active{background:var(--slot-bg);border-color:var(--gold);color:var(--gold-bright);}
+  .tool-select{background:var(--bg-panel);border:1px solid var(--slot-border);color:var(--text-dim);border-radius:8px;padding:8px 9px;font-size:12px;}
+  .primary-btn{background:var(--gold);border:1px solid var(--gold);color:#1c1e26;font-weight:600;border-radius:8px;padding:9px 16px;font-size:13px;white-space:nowrap;transition:background .15s;}
+  .primary-btn:hover{background:var(--gold-bright);}
+
+  .group-head{grid-column:1/-1;font-family:var(--font-display);font-weight:600;font-size:19px;color:var(--gold-bright);letter-spacing:0.02em;border-bottom:1px solid var(--slot-border);padding:14px 2px 6px;display:flex;justify-content:space-between;align-items:baseline;}
+  .group-head.prio-1{color:#e2907f;border-bottom-color:rgba(193,88,79,0.5);}
+  .group-head.prio-2{color:var(--gold-bright);}
+  .group-head.prio-3{color:var(--text-dim);}
+  .tab-hunt{margin-top:10px;border-top:1px solid var(--slot-border);border-radius:0 0 8px 8px;padding-top:14px;}
+  .hunt-foot{
+    display:flex;flex-direction:column;gap:3px;margin-top:8px;padding-top:8px;
+    border-top:1px dashed var(--slot-border);font-size:11px;
+  }
+  .hunt-col{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);}
+  .hunt-deal{color:var(--text-dim);}
+  .hunt-deal.ok{color:var(--green);font-weight:600;}
+  .hunt-deal.over{color:var(--amber);}
+  .group-head small{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px;}
+  .slot{background:var(--slot-bg);border:1px solid var(--slot-border);border-radius:var(--radius);padding:10px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .15s,transform .1s;display:flex;flex-direction:column;}
+  .slot:hover{border-color:var(--slot-border-hover);transform:translateY(-2px);}
+  .slot.status-fr{border-color:rgba(76,154,106,0.5);}
+  .slot.status-fr::after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),transparent 80%);}
+  .slot.status-other{border-color:rgba(208,145,43,0.5);}
+  .slot.status-other::after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--amber),transparent 80%);}
+  .slot.status-missing{border-style:dashed;}
+  .slot.status-missing .card-img{opacity:0.55;filter:saturate(0.6);}
+  .card-img-wrap{aspect-ratio:444/620;border-radius:7px;overflow:hidden;background:#1a1c23;margin-bottom:9px;position:relative;}
+  .card-img{width:100%;height:100%;object-fit:contain;display:block;}
+  .slot-num{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);position:absolute;top:6px;left:6px;background:rgba(20,21,28,0.85);padding:2px 7px;border-radius:5px;z-index:2;}
+  .slot-status-badge{position:absolute;top:6px;right:6px;z-index:2;display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
+  .slot-value{position:absolute;bottom:6px;right:6px;z-index:2;font-family:var(--font-mono);font-size:10px;background:rgba(20,21,28,0.85);color:var(--gold-bright);padding:2px 7px;border-radius:5px;}
+  .badge{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:0.03em;white-space:nowrap;}
+  .badge.fr{background:rgba(30,60,42,0.92);color:#7fd6a2;}
+  .badge.other{background:rgba(72,50,14,0.92);color:#f0b45c;}
+  .badge.missing{background:rgba(30,31,40,0.9);color:var(--text-faint);}
+  .badge.wish{background:rgba(63,55,20,0.92);color:#ffd75e;}
+  .slot-name{font-family:var(--font-display);font-weight:600;font-size:18px;line-height:1.05;}
+  .slot-meta{font-size:11px;color:var(--text-dim);margin-top:3px;line-height:1.4;}
+  .slot-tags{margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;}
+  .mini-chip{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--slot-border);color:var(--text-faint);}
+  .mini-chip.on{border-color:var(--gold);color:var(--gold-bright);background:rgba(201,169,97,0.08);}
+
+  .empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-faint);border:1px dashed var(--slot-border);border-radius:var(--radius);}
+  .empty-state .big{font-family:var(--font-display);font-size:22px;color:var(--text-dim);margin-bottom:6px;}
+
+  /* Pastilles de version */
+  .vpill{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.02em;white-space:nowrap;flex-shrink:0;border:1px solid rgba(0,0,0,0.25);color:#f4efe4;}
+  .vpill.standard{background:#c1584f;}
+  .vpill.reverse{background:#d0a92b;color:#2a2410;}
+  .vpill.other{background:#3f6fb0;color:#eaf1fb;}
+  .slot-tags .vpill{min-width:22px;height:20px;font-size:9px;padding:0 6px;cursor:pointer;transition:opacity .12s,transform .1s,box-shadow .12s;}
+  .slot-tags .vpill.dim{opacity:0.3;}
+  .slot-tags .vpill.opt{border:1px dashed rgba(255,255,255,0.45);}
+  .slot-tags .vpill:hover{transform:scale(1.1);box-shadow:0 0 0 1px var(--gold);}
+
+  .overlay{position:fixed;inset:0;background:rgba(10,11,14,0.72);backdrop-filter:blur(2px);display:none;align-items:flex-start;justify-content:center;padding:4vh 20px;z-index:50;overflow-y:auto;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--bg-panel);border:1px solid var(--slot-border);border-radius:14px;width:100%;max-width:780px;padding:26px 28px 28px;margin-bottom:4vh;}
+  .modal.narrow{max-width:520px;}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;}
+  .modal-title{font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1.05;}
+  .modal-title small{display:block;font-family:var(--font-body);font-size:12px;color:var(--text-faint);font-weight:500;margin-top:4px;}
+  .close-x{background:transparent;border:none;color:var(--text-faint);font-size:22px;line-height:1;padding:4px 8px;border-radius:6px;}
+  .close-x:hover{color:var(--text);background:var(--bg-panel-2);}
+
+  .detail-layout{display:flex;gap:22px;align-items:flex-start;}
+  .detail-img{width:190px;flex-shrink:0;border-radius:9px;overflow:hidden;background:#1a1c23;cursor:zoom-in;}
+  .detail-img img{width:100%;display:block;}
+  .detail-main{flex:1;min-width:0;}
+  .detail-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  @media (max-width:640px){.detail-layout{flex-direction:column;}.detail-img{width:150px;margin:0 auto;}}
+
+  #lightbox{cursor:zoom-out;align-items:center;}
+  #lightbox img{max-width:min(92vw,560px);max-height:88vh;border-radius:12px;box-shadow:0 10px 60px rgba(0,0,0,0.6);}
+
+  .field-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .field{flex:1;min-width:120px;display:flex;flex-direction:column;gap:6px;}
+  .field label{font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-faint);}
+  .field input,.field select,.field textarea{background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:7px;padding:9px 10px;color:var(--text);font-size:14px;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold);}
+
+  .section-title{font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:0.03em;text-transform:uppercase;color:var(--text-dim);margin:20px 0 10px;padding-top:14px;border-top:1px solid var(--slot-border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+  .mini-btn{background:var(--bg-panel-2);border:1px solid var(--slot-border);color:var(--gold-bright);font-size:12px;padding:5px 10px;border-radius:6px;}
+  .mini-btn:hover{border-color:var(--gold);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-faint);padding:6px 8px;border-bottom:1px solid var(--slot-border);}
+  th.center, td.center{text-align:center;}
+  td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+  td.num{font-family:var(--font-mono);}
+  .del-x{background:none;border:none;color:var(--text-faint);font-size:14px;padding:2px 6px;}
+  .del-x:hover{color:var(--danger);}
+  .no-rows{color:var(--text-faint);font-size:12px;padding:10px 0;font-style:italic;}
+
+  .own-check{appearance:none;width:20px;height:20px;border-radius:5px;border:1px solid var(--slot-border);background:var(--bg-panel-2);cursor:pointer;vertical-align:middle;position:relative;transition:all .12s;}
+  .own-check:hover{border-color:var(--gold);}
+  .own-check:checked{background:var(--green);border-color:var(--green);}
+  .own-check:checked::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#12211a;font-size:13px;font-weight:700;}
+  .lang-head{display:inline-flex;align-items:center;gap:4px;}
+  .lang-head .del-x{font-size:11px;padding:0 3px;}
+  .own-cell{display:inline-flex;flex-direction:column;align-items:center;gap:4px;}
+  .req-check{
+    appearance:none;width:14px;height:14px;border-radius:50%;
+    border:1px solid var(--slot-border);background:var(--bg-panel-2);
+    cursor:pointer;flex-shrink:0;position:relative;transition:all .12s;
+  }
+  .req-check:hover{border-color:var(--gold);}
+  .req-check:checked{border-color:var(--gold);background:var(--gold);box-shadow:inset 0 0 0 3px var(--bg-panel);}
+  tr.row-opt .vpill{opacity:0.4;filter:saturate(0.5);}
+  tr.row-opt td:first-child::after{content:"hors complétion";font-size:9px;color:var(--text-faint);font-style:italic;margin-left:6px;}
+  .note-btn{background:transparent;border:1px dashed var(--slot-border);color:var(--text-faint);font-family:var(--font-mono);font-size:9px;padding:1px 6px;border-radius:5px;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5;}
+  .note-btn:hover{border-color:var(--gold);color:var(--gold-bright);}
+  .note-btn.has-note{border-style:solid;border-color:var(--gold);color:var(--gold-bright);background:rgba(201,169,97,0.08);}
+  .version-name{display:inline-flex;align-items:center;gap:8px;}
+
+  .sparkline-wrap{display:flex;align-items:center;gap:10px;margin:4px 0 8px;font-size:11px;color:var(--text-faint);}
+
+  .subform{background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:8px;padding:12px;margin-top:10px;}
+  .subform-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .modal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:10px;flex-wrap:wrap;}
+  .danger-link{background:none;border:none;color:var(--text-faint);font-size:12px;}
+  .danger-link:hover{color:var(--danger);}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--slot-bg);border:1px solid var(--gold);color:var(--gold-bright);padding:10px 18px;border-radius:8px;font-size:13px;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  @media (max-width:820px){
+    #app{flex-direction:column;}
+    .spine{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto;padding:14px;}
+    .spine-title,.spine-sub,.spine-foot{display:none;}
+    .tab{margin:0 4px;padding:8px 14px;white-space:nowrap;}
+    main{padding:16px;}
+    .view-title{font-size:28px;}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <nav class="spine">
+    <div class="spine-title">Le Classeur</div>
+    <div class="spine-sub">Suivi de collection</div>
+    <div id="tabList"></div>
+    <div class="spine-foot">
+      <button class="ghost-btn" id="btnSync">⇅ Synchro GitHub</button>
+      <div class="fs-status" id="syncStatus">Synchro : non configurée</div>
+      <button class="ghost-btn" id="btnLinkFile">🖫 Lier un fichier de sauvegarde</button>
+      <div class="fs-status" id="fsStatus">Sauvegarde : navigateur uniquement</div>
+      <button class="ghost-btn" id="btnExport">⭳ Exporter (JSON)</button>
+      <button class="ghost-btn" id="btnImport">⭱ Importer un fichier</button>
+      <button class="ghost-btn" id="btnLocalImages">🖼 Images locales : off</button>
+      <button class="ghost-btn" id="btnReset">↺ Réinitialiser la base</button>
+      <input type="file" id="fileImport" accept="application/json" style="display:none">
+    </div>
+  </nav>
+
+  <main>
+    <div id="bannerZone"></div>
+
+    <div class="view-head">
+      <div><div class="view-title" id="viewTitle">—<small id="viewSub"></small></div></div>
+      <div class="stat-row" id="statRow"></div>
+    </div>
+
+    <div class="progress-block" id="progressBlock"></div>
+
+    <div class="toolbar">
+      <input type="text" class="search-box" id="searchBox" placeholder="Rechercher par nom, extension, numéro…">
+      <select class="tool-select" id="sortSelect" title="Trier">
+        <option value="numero">Tri : numéro</option>
+        <option value="extension">Tri : extension</option>
+        <option value="rarete">Tri : rareté</option>
+        <option value="valeur">Tri : valeur ↓</option>
+      </select>
+      <button class="filter-btn" id="btnGroup" title="Grouper par extension">⊞ Grouper</button>
+      <button class="filter-btn active" data-filter="all">Toutes</button>
+      <button class="filter-btn" data-filter="missing-fr">Manquantes FR</button>
+      <button class="filter-btn" data-filter="missing">Non possédées</button>
+      <button class="filter-btn" data-filter="owned">Possédées</button>
+      <button class="filter-btn" data-filter="wishlist">★ Wishlist</button>
+      <button class="filter-btn" data-filter="graded">Gradées</button>
+      <button class="primary-btn" id="btnAddCard">+ Ajouter une carte</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<!-- ===== Modal : détail de carte ===== -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="detailTitle">—<small id="detailSub"></small></div>
+      <button class="close-x" data-close="detailOverlay">×</button>
+    </div>
+
+    <div class="detail-layout">
+      <div>
+        <div class="detail-img" id="detailImgWrap" title="Cliquer pour agrandir"><img id="detailImg" src="" alt="" loading="lazy"></div>
+        <div class="detail-actions">
+          <button class="mini-btn" id="btnCardmarket">↗ Cardmarket</button>
+          <button class="mini-btn" id="btnWishlist">☆ Wishlist</button>
+        </div>
+        <div class="subform" id="wishForm" style="display:none;">
+          <div class="field-row">
+            <div class="field"><label>Priorité</label>
+              <select id="w_prio"><option value="1">Haute</option><option value="2">Moyenne</option><option value="3">Basse</option></select>
+            </div>
+            <div class="field"><label>Budget max (€)</label><input type="number" step="0.01" id="w_budget"></div>
+          </div>
+          <div class="subform-actions">
+            <button class="ghost-btn" id="w_remove">Retirer de la wishlist</button>
+            <button class="ghost-btn" id="w_cancel">Annuler</button>
+            <button class="primary-btn" id="w_save">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+      <div class="detail-main">
+
+        <div class="section-title" style="margin-top:0;padding-top:0;border-top:none;">
+          Possession — version × langue
+          <span style="display:flex;gap:6px;">
+            <button class="mini-btn" id="btnAddVersion">+ Version</button>
+            <button class="mini-btn" id="btnAddLangue">+ Langue</button>
+          </span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="ownTable"><thead id="ownHead"></thead><tbody id="ownBody"></tbody></table>
+        </div>
+        <div class="subform" id="versionForm" style="display:none;">
+          <div class="field-row" style="margin-bottom:0;">
+            <div class="field"><label>Nom de la version</label><input type="text" id="v_nom" placeholder="Ex. Reverse, 1st Edition, Tampon (PreRelease)…"></div>
+          </div>
+          <div class="subform-actions">
+            <button class="ghost-btn" id="v_cancel">Annuler</button>
+            <button class="primary-btn" id="v_save">Ajouter la version</button>
+          </div>
+        </div>
+        <div class="subform" id="langueForm" style="display:none;">
+          <div class="field-row" style="margin-bottom:0;">
+            <div class="field"><label>Langue</label>
+              <select id="l_nom"><option>FR</option><option>EN</option><option>JP</option><option>DE</option><option>IT</option><option>ES</option><option>PT</option><option>Autre</option></select>
+            </div>
+          </div>
+          <div class="subform-actions">
+            <button class="ghost-btn" id="l_cancel">Annuler</button>
+            <button class="primary-btn" id="l_save">Ajouter la langue</button>
+          </div>
+        </div>
+
+        <div class="section-title">Côtes (historique)
+          <button class="mini-btn" id="btnAddCote">+ Ajouter un relevé</button>
+        </div>
+        <div class="sparkline-wrap" id="sparkZone"></div>
+        <table id="coteTable">
+          <thead><tr><th>État</th><th>Version</th><th>Prix</th><th>Source</th><th>Relevé le</th><th></th></tr></thead>
+          <tbody id="coteBody"></tbody>
+        </table>
+        <div id="coteEmpty" class="no-rows">Aucun relevé de côte.</div>
+        <div class="subform" id="coteForm" style="display:none;">
+          <div class="field-row">
+            <div class="field"><label>État</label>
+              <select id="k_etat"><option>Mint</option><option>Near Mint</option><option>Excellent</option><option>Très bien</option><option>Bien</option><option>Passable</option><option>Gradée</option></select>
+            </div>
+            <div class="field"><label>Version</label><select id="k_version"></select></div>
+            <div class="field"><label>Prix (€)</label><input type="number" step="0.01" id="k_prix"></div>
+            <div class="field"><label>Relevé le</label><input type="date" id="k_date"></div>
+          </div>
+          <div class="field-row"><div class="field"><label>Source</label><input type="text" id="k_source" placeholder="Ex. Cardmarket FR — ventes conclues"></div></div>
+          <div class="subform-actions">
+            <button class="ghost-btn" id="k_cancel">Annuler</button>
+            <button class="primary-btn" id="k_save">Ajouter le relevé</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="danger-link" id="btnDeleteCard">Supprimer cette carte de la collection</button>
+      <button class="ghost-btn" id="btnEditCard">Modifier les infos de la carte</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal : exemplaire (état / grade / note) ===== -->
+<div class="overlay" id="possOverlay">
+  <div class="modal narrow">
+    <div class="modal-head">
+      <div class="modal-title" id="possTitle">Exemplaire<small id="possSub"></small></div>
+      <button class="close-x" data-close="possOverlay">×</button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>État</label>
+        <select id="p_etat">
+          <option value="">—</option>
+          <option>Mint</option><option>Near Mint</option><option>Excellent</option>
+          <option>Très bien</option><option>Bien</option><option>Passable</option>
+        </select>
+      </div>
+      <div class="field"><label>Gradeur</label>
+        <select id="p_gradeur"><option value="">— (non gradée)</option><option>PSA</option><option>PCA</option><option>CCC</option><option>BGS</option><option>Autre</option></select>
+      </div>
+      <div class="field"><label>Grade</label><input type="text" id="p_grade" placeholder="Ex. 9, 8.5, 10…"></div>
+    </div>
+    <div class="field-row"><div class="field"><label>Note libre</label><input type="text" id="p_note" placeholder="Ex. pli léger au dos, achetée à…"></div></div>
+    <div class="modal-foot">
+      <span></span>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost-btn" data-close="possOverlay">Annuler</button>
+        <button class="primary-btn" id="p_save">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal : ajouter / modifier une carte ===== -->
+<div class="overlay" id="cardOverlay">
+  <div class="modal narrow" style="max-width:600px;">
+    <div class="modal-head">
+      <div class="modal-title" id="cardModalTitle">Ajouter une carte</div>
+      <button class="close-x" data-close="cardOverlay">×</button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Collection</label><select id="f_collection"></select></div>
+      <div class="field"><label>Nom</label><input type="text" id="f_nom" placeholder="Ex. Ectoplasma ex"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Extension</label><input type="text" id="f_extension" placeholder="Ex. Vigueur Spectrale"></div>
+      <div class="field"><label>Numéro</label><input type="text" id="f_numero" placeholder="Ex. 34/119"></div>
+      <div class="field"><label>Rareté</label><input type="text" id="f_rarete" placeholder="Ex. Ultra-rare"></div>
+    </div>
+    <div class="field-row"><div class="field"><label>URL de l'image (scan)</label><input type="text" id="f_image" placeholder="https://…"></div></div>
+    <div class="field-row"><div class="field"><label>Versions disponibles (virgules)</label><input type="text" id="f_versions" placeholder="Standard, Reverse, Non Holo"></div></div>
+    <div class="field-row"><div class="field"><label>Langues disponibles (virgules)</label><input type="text" id="f_langues" placeholder="FR, EN, JP"></div></div>
+    <div class="modal-foot">
+      <span></span>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost-btn" data-close="cardOverlay">Annuler</button>
+        <button class="primary-btn" id="btnSaveCard">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal : choix d'import ===== -->
+<div class="overlay" id="importOverlay">
+  <div class="modal narrow">
+    <div class="modal-head">
+      <div class="modal-title">Importer<small id="importInfo"></small></div>
+      <button class="close-x" data-close="importOverlay">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-dim);line-height:1.5;">
+      <b style="color:var(--text);">Fusionner</b> ajoute les cartes, possessions et côtes du fichier sans toucher à tes données actuelles (les doublons sont ignorés, tes notes sont conservées).<br><br>
+      <b style="color:var(--text);">Remplacer</b> écrase tout par le contenu du fichier.
+    </p>
+    <div class="modal-foot">
+      <button class="danger-link" id="importReplace">Remplacer tout</button>
+      <div style="display:flex;gap:8px;">
+        <button class="ghost-btn" data-close="importOverlay">Annuler</button>
+        <button class="primary-btn" id="importMerge">Fusionner</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lightbox image ===== -->
+<div class="overlay" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<!-- ===== Modal : synchro GitHub ===== -->
+<div class="overlay" id="syncOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">Synchro GitHub<small>Tes données dans un Gist secret, partagées entre tous tes appareils</small></div>
+      <button class="close-x" data-close="syncOverlay">×</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Token GitHub (permission « gist » uniquement)</label>
+        <input type="password" id="s_token" placeholder="ghp_… ou github_pat_…" autocomplete="off">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>ID du Gist (laisser vide pour en créer un)</label>
+        <input type="text" id="s_gist" placeholder="Ex. a1b2c3d4e5…" autocomplete="off">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-faint);line-height:1.6;margin:4px 0 14px;">
+      Créer le token : GitHub → Settings → Developer settings → Personal access tokens →
+      « Tokens (classic) » → Generate new token → cocher uniquement <b>gist</b>.
+      Le token reste stocké sur cet appareil, jamais dans le Gist ni dans le code.
+    </div>
+    <div id="syncInfo" style="font-size:12px;color:var(--text-dim);margin-bottom:12px;"></div>
+    <div class="modal-foot">
+      <button class="danger-link" id="s_disconnect" style="display:none;">Déconnecter cet appareil</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+        <button class="ghost-btn" id="s_pull" style="display:none;">↓ Récupérer</button>
+        <button class="ghost-btn" id="s_push" style="display:none;">↑ Pousser</button>
+        <button class="primary-btn" id="s_connect">Connecter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal : conflit de synchro ===== -->
+<div class="overlay" id="conflictOverlay">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div class="modal-title">⚠ Versions divergentes<small>Le Gist a été modifié depuis la dernière synchro de cet appareil</small></div>
+      <button class="close-x" data-close="conflictOverlay">×</button>
+    </div>
+    <div id="conflictInfo" style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+      <button class="ghost-btn" id="c_keepLocal">Garder la version locale (écrase le cloud)</button>
+      <button class="primary-btn" id="c_keepRemote">Garder la version cloud (écrase le local)</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   DONNÉES INITIALES (générées depuis pokecardex)
+============================================================ */
+const SEED = {"cards": [{"id": "em-1", "collection": "EX Émeraude", "nom": "Braségali", "numero": "1/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/1.jpg", "versions": ["Standard", "Reverse", "Non Holo"], "langues": ["FR"]}, {"id": "em-2", "collection": "EX Émeraude", "nom": "Deoxys", "numero": "2/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/2.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-3", "collection": "EX Émeraude", "nom": "Brouhabam", "numero": "3/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/3.jpg", "versions": ["Standard", "Reverse", "Staff (National Championships)", "Tampon (National Championships)"], "langues": ["FR"]}, {"id": "em-4", "collection": "EX Émeraude", "nom": "Gardevoir", "numero": "4/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/4.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-5", "collection": "EX Émeraude", "nom": "Groudon", "numero": "5/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/5.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-6", "collection": "EX Émeraude", "nom": "Kyogre", "numero": "6/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/6.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-7", "collection": "EX Émeraude", "nom": "Élecsprint", "numero": "7/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/7.jpg", "versions": ["Standard", "Reverse", "Non Holo"], "langues": ["FR"]}, {"id": "em-8", "collection": "EX Émeraude", "nom": "Milobellus", "numero": "8/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/8.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-9", "collection": "EX Émeraude", "nom": "Rayquaza", "numero": "9/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/9.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-10", "collection": "EX Émeraude", "nom": "Jungko", "numero": "10/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/10.jpg", "versions": ["Standard", "Reverse", "Non Holo"], "langues": ["FR"]}, {"id": "em-11", "collection": "EX Émeraude", "nom": "Laggron", "numero": "11/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/11.jpg", "versions": ["Standard", "Reverse", "Non Holo"], "langues": ["FR"]}, {"id": "em-12", "collection": "EX Émeraude", "nom": "Éoko", "numero": "12/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/12.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-13", "collection": "EX Émeraude", "nom": "Oniglali", "numero": "13/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/13.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-14", "collection": "EX Émeraude", "nom": "Groudon", "numero": "14/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/14.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-15", "collection": "EX Émeraude", "nom": "Kyogre", "numero": "15/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/15.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-16", "collection": "EX Émeraude", "nom": "Élecsprint", "numero": "16/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/16.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-17", "collection": "EX Émeraude", "nom": "Tarinor", "numero": "17/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/17.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-18", "collection": "EX Émeraude", "nom": "Relicanth", "numero": "18/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/18.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-19", "collection": "EX Émeraude", "nom": "Rhinoféros", "numero": "19/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/19.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-20", "collection": "EX Émeraude", "nom": "Séviper", "numero": "20/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/20.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-21", "collection": "EX Émeraude", "nom": "Mangriff", "numero": "21/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/21.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-22", "collection": "EX Émeraude", "nom": "Chapignon", "numero": "22/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/22.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-23", "collection": "EX Émeraude", "nom": "Camérupt", "numero": "23/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/23.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-24", "collection": "EX Émeraude", "nom": "Kaorine", "numero": "24/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/24.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-25", "collection": "EX Émeraude", "nom": "Galifeu", "numero": "25/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/25.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-26", "collection": "EX Émeraude", "nom": "Dodrio", "numero": "26/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/26.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-27", "collection": "EX Émeraude", "nom": "Électrode", "numero": "27/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/27.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-28", "collection": "EX Émeraude", "nom": "Massko", "numero": "28/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/28.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-29", "collection": "EX Émeraude", "nom": "Groret", "numero": "29/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/29.jpg", "versions": ["Standard", "Reverse", "Tampon (PreRelease)"], "langues": ["FR"]}, {"id": "em-30", "collection": "EX Émeraude", "nom": "Groret", "numero": "30/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/30.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-31", "collection": "EX Émeraude", "nom": "Hariyama", "numero": "31/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/31.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-32", "collection": "EX Émeraude", "nom": "Lumivole", "numero": "32/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/32.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-33", "collection": "EX Émeraude", "nom": "Kirlia", "numero": "33/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/33.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-34", "collection": "EX Émeraude", "nom": "Linéon", "numero": "34/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/34.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-35", "collection": "EX Émeraude", "nom": "Ramboum", "numero": "35/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/35.jpg", "versions": ["Standard", "Reverse", "Tampon (Regional Championships)", "Tampon (State Championships)"], "langues": ["FR"]}, {"id": "em-36", "collection": "EX Émeraude", "nom": "Flobio", "numero": "36/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/36.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-37", "collection": "EX Émeraude", "nom": "Négapi", "numero": "37/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/37.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-38", "collection": "EX Émeraude", "nom": "Feunard", "numero": "38/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/38.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-39", "collection": "EX Émeraude", "nom": "Posipi", "numero": "39/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/39.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-40", "collection": "EX Émeraude", "nom": "Avaltout", "numero": "40/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/40.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-41", "collection": "EX Émeraude", "nom": "Hélédelle", "numero": "41/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/41.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-42", "collection": "EX Émeraude", "nom": "Muciole", "numero": "42/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/42.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-43", "collection": "EX Émeraude", "nom": "Balbuto", "numero": "43/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/43.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-44", "collection": "EX Émeraude", "nom": "Cacnea", "numero": "44/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/44.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-45", "collection": "EX Émeraude", "nom": "Doduo", "numero": "45/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/45.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-46", "collection": "EX Émeraude", "nom": "Skelénox", "numero": "46/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/46.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-47", "collection": "EX Émeraude", "nom": "Dynavolt", "numero": "47/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/47.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-48", "collection": "EX Émeraude", "nom": "Dynavolt", "numero": "48/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/48.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-49", "collection": "EX Émeraude", "nom": "Barpau", "numero": "49/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/49.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-50", "collection": "EX Émeraude", "nom": "Barpau", "numero": "50/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/50.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-51", "collection": "EX Émeraude", "nom": "Gloupti", "numero": "51/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/51.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-52", "collection": "EX Émeraude", "nom": "Embrylex", "numero": "52/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/52.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-53", "collection": "EX Émeraude", "nom": "Lovdisc", "numero": "53/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/53.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-54", "collection": "EX Émeraude", "nom": "Makuhita", "numero": "54/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/54.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-55", "collection": "EX Émeraude", "nom": "Meditikka", "numero": "55/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/55.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-56", "collection": "EX Émeraude", "nom": "Gobou", "numero": "56/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/56.jpg", "versions": ["Standard", "Reverse", "Tampon (Wizard World)"], "langues": ["FR"]}, {"id": "em-57", "collection": "EX Émeraude", "nom": "Chamallot", "numero": "57/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/57.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-58", "collection": "EX Émeraude", "nom": "Chamallot", "numero": "58/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/58.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-59", "collection": "EX Émeraude", "nom": "Pichu", "numero": "59/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/59.jpg", "versions": ["Standard", "Reverse", "Tampon (Nintendo World)"], "langues": ["FR"]}, {"id": "em-60", "collection": "EX Émeraude", "nom": "Pikachu", "numero": "60/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/60.jpg", "versions": ["Standard", "Reverse", "Reverse Non Holo", "Tampon (Comic-Con)"], "langues": ["FR"]}, {"id": "em-61", "collection": "EX Émeraude", "nom": "Tarsal", "numero": "61/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/61.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-62", "collection": "EX Émeraude", "nom": "Rhinocorne", "numero": "62/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/62.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-63", "collection": "EX Émeraude", "nom": "Balignon", "numero": "63/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/63.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-64", "collection": "EX Émeraude", "nom": "Stalgamin", "numero": "64/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/64.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-65", "collection": "EX Émeraude", "nom": "Spoink", "numero": "65/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/65.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-66", "collection": "EX Émeraude", "nom": "Spoink", "numero": "66/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/66.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-67", "collection": "EX Émeraude", "nom": "Tylton", "numero": "67/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/67.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-68", "collection": "EX Émeraude", "nom": "Nirondelle", "numero": "68/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/68.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-69", "collection": "EX Émeraude", "nom": "Poussifeu", "numero": "69/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/69.jpg", "versions": ["Standard", "Reverse", "Tampon (Wizard World)"], "langues": ["FR"]}, {"id": "em-70", "collection": "EX Émeraude", "nom": "Arcko", "numero": "70/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/70.jpg", "versions": ["Standard", "Reverse", "Tampon (GenCon)"], "langues": ["FR"]}, {"id": "em-71", "collection": "EX Émeraude", "nom": "Voltorbe", "numero": "71/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/71.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-72", "collection": "EX Émeraude", "nom": "Goupix", "numero": "72/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/72.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-73", "collection": "EX Émeraude", "nom": "Chuchmur", "numero": "73/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/73.jpg", "versions": ["Standard", "Reverse", "Tampon (City Championships)"], "langues": ["FR"]}, {"id": "em-74", "collection": "EX Émeraude", "nom": "Zigzaton", "numero": "74/106", "extension": "EX : Émeraude", "rarete": "Commune", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/74.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-75", "collection": "EX Émeraude", "nom": "Zone de combat", "numero": "75/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/75.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-76", "collection": "EX Émeraude", "nom": "Double guérison totale", "numero": "76/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/76.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-77", "collection": "EX Émeraude", "nom": "Annette surfe sur le net", "numero": "77/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/77.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-78", "collection": "EX Émeraude", "nom": "Baie Prine", "numero": "78/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/78.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-79", "collection": "EX Émeraude", "nom": "Le Projet de M. Rochard", "numero": "79/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/79.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-80", "collection": "EX Émeraude", "nom": "Baie Oran", "numero": "80/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/80.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-81", "collection": "EX Émeraude", "nom": "PokéNav", "numero": "81/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/81.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-82", "collection": "EX Émeraude", "nom": "Prof. Seko", "numero": "82/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/82.jpg", "versions": ["Standard", "Reverse", "Tampon (Professor Program)"], "langues": ["FR"]}, {"id": "em-83", "collection": "EX Émeraude", "nom": "Super bonbon", "numero": "83/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/83.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-84", "collection": "EX Émeraude", "nom": "Scott", "numero": "84/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/84.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-85", "collection": "EX Émeraude", "nom": "Timmy au dressage", "numero": "85/106", "extension": "EX : Émeraude", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/85.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-86", "collection": "EX Émeraude", "nom": "Énergie Obscurité", "numero": "86/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/86.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-87", "collection": "EX Émeraude", "nom": "Double Énergie Multicolore", "numero": "87/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/87.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-88", "collection": "EX Émeraude", "nom": "Énergie Métal", "numero": "88/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/88.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-89", "collection": "EX Émeraude", "nom": "Énergies Multiples", "numero": "89/106", "extension": "EX : Émeraude", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/89.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "em-90", "collection": "EX Émeraude", "nom": "Altaria ex", "numero": "90/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/90.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-91", "collection": "EX Émeraude", "nom": "Cacturne ex", "numero": "91/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/91.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-92", "collection": "EX Émeraude", "nom": "Camérupt ex", "numero": "92/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/92.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-93", "collection": "EX Émeraude", "nom": "Deoxys ex", "numero": "93/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/93.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-94", "collection": "EX Émeraude", "nom": "Téraclope ex", "numero": "94/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/94.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-95", "collection": "EX Émeraude", "nom": "Charmina ex", "numero": "95/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/95.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-96", "collection": "EX Émeraude", "nom": "Milobellus ex", "numero": "96/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/96.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-97", "collection": "EX Émeraude", "nom": "Raichu ex", "numero": "97/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/97.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-98", "collection": "EX Émeraude", "nom": "Regice ex", "numero": "98/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/98.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-99", "collection": "EX Émeraude", "nom": "Regirock ex", "numero": "99/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/99.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-100", "collection": "EX Émeraude", "nom": "Registeel ex", "numero": "100/106", "extension": "EX : Émeraude", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/100.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-101", "collection": "EX Émeraude", "nom": "Énergie Plante", "numero": "101/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/101.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-102", "collection": "EX Émeraude", "nom": "Énergie Feu", "numero": "102/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/102.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-103", "collection": "EX Émeraude", "nom": "Énergie Eau", "numero": "103/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/103.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-104", "collection": "EX Émeraude", "nom": "Énergie Électrique", "numero": "104/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/104.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-105", "collection": "EX Émeraude", "nom": "Énergie Psy", "numero": "105/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/105.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-106", "collection": "EX Émeraude", "nom": "Énergie Combat", "numero": "106/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/106.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "em-107", "collection": "EX Émeraude", "nom": "Canarticho", "numero": "107/106", "extension": "EX : Émeraude", "rarete": "Secrète", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/107.jpg", "versions": ["Standard"], "langues": ["FR"]}, {"id": "ecto-1", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "050/088", "extension": "Équilibre Parfait", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/POR/FR/50.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-2", "collection": "Ectoplasma", "nom": "Méga-Ectoplasma ex", "numero": "125/217", "extension": "Héros Transcendants", "rarete": "Double Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/ASC/FR/125.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-3", "collection": "Ectoplasma", "nom": "Méga-Ectoplasma ex", "numero": "269/217", "extension": "Héros Transcendants", "rarete": "Méga Attaque Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/ASC/FR/269.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-4", "collection": "Ectoplasma", "nom": "Méga-Ectoplasma ex", "numero": "284/217", "extension": "Héros Transcendants", "rarete": "Illustration Spéciale Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/ASC/FR/284.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-5", "collection": "Ectoplasma", "nom": "Méga-Ectoplasma ex", "numero": "056/094", "extension": "Flammes Fantasmagoriques", "rarete": "Double Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PFL/FR/56.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-6", "collection": "Ectoplasma", "nom": "Ectoplasma ex", "numero": "104/162", "extension": "Forces Temporelles", "rarete": "Double Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/TEF/FR/104.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-7", "collection": "Ectoplasma", "nom": "Ectoplasma ex", "numero": "193/162", "extension": "Forces Temporelles", "rarete": "Ultra Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/TEF/FR/193.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-8", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "057/091", "extension": "Destinées de Paldea", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/PAF/FR/57.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-9", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "094/165", "extension": "151", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/MEW/FR/94.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-10", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "066/196", "extension": "Origine Perdue", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/LOR/FR/66.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-11", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "TG06/TG30", "extension": "Origine Perdue", "rarete": "Secrète", "image": "https://pokecardex-scans.b-cdn.net/sets/LOR/FR/223.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-12", "collection": "Ectoplasma", "nom": "Ectoplasma-V", "numero": "156/264", "extension": "Poing de Fusion", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/FST/FR/156.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-13", "collection": "Ectoplasma", "nom": "Ectoplasma-VMAX", "numero": "157/264", "extension": "Poing de Fusion", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/FST/FR/157.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-14", "collection": "Ectoplasma", "nom": "Ectoplasma-VMAX", "numero": "271/264", "extension": "Poing de Fusion", "rarete": "Secrète", "image": "https://pokecardex-scans.b-cdn.net/sets/FST/FR/271.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-15", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "057/198", "extension": "Règne de Glace", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/CRE/FR/57.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-16", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "085/202", "extension": "Épée et Bouclier", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/SWSH1/FR/85.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-17", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "70/214", "extension": "Alliance Infaillible", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM10/FR/70.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-18", "collection": "Ectoplasma", "nom": "Ectoplasma et Mimiqui-GX", "numero": "53/181", "extension": "Duo de Choc", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM09/FR/53.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-19", "collection": "Ectoplasma", "nom": "Ectoplasma et Mimiqui-GX", "numero": "164/181", "extension": "Duo de Choc", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM09/FR/164.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-20", "collection": "Ectoplasma", "nom": "Ectoplasma et Mimiqui-GX", "numero": "165/181", "extension": "Duo de Choc", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM09/FR/165.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-21", "collection": "Ectoplasma", "nom": "Ectoplasma et Mimiqui-GX", "numero": "186/181", "extension": "Duo de Choc", "rarete": "Secrète", "image": "https://pokecardex-scans.b-cdn.net/sets/SM09/FR/186.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-22", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "38/111", "extension": "Invasion Carmin", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/SM04/FR/38.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-23", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "35/83", "extension": "Générations", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/GNR/FR/35.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-24", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "60/162", "extension": "Impulsion Turbo", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/BKT/FR/60.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-25", "collection": "Ectoplasma", "nom": "Ectoplasma-EX", "numero": "34/119", "extension": "Vigueur Spectrale", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PHF/FR/34.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-26", "collection": "Ectoplasma", "nom": "M-Ectoplasma-EX", "numero": "35/119", "extension": "Vigueur Spectrale", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PHF/FR/35.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-27", "collection": "Ectoplasma", "nom": "Lien Spirituel Ectoplasma", "numero": "95/119", "extension": "Vigueur Spectrale", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/PHF/FR/95.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-28", "collection": "Ectoplasma", "nom": "Ectoplasma-EX", "numero": "114/119", "extension": "Vigueur Spectrale", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PHF/FR/114.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-29", "collection": "Ectoplasma", "nom": "M-Ectoplasma-EX", "numero": "121/119", "extension": "Vigueur Spectrale", "rarete": "Secrète", "image": "https://pokecardex-scans.b-cdn.net/sets/PHF/FR/121.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-30", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "94/102", "extension": "HS : Triomphe", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/TM/FR/94.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-31", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "16/99", "extension": "Platine : Arceus", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AR/FR/16.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-32", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "17/99", "extension": "Platine : Arceus", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AR/FR/17.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-33", "collection": "Ectoplasma", "nom": "Ectoplasma Niv.X", "numero": "97/99", "extension": "Platine : Arceus", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AR/FR/97.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-34", "collection": "Ectoplasma", "nom": "Ectoplasma GL", "numero": "40/111", "extension": "Platine : Rivaux Émergeants", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/RR/FR/40.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-35", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "18/100", "extension": "Diamant & Perle : Tempête", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SF/FR/18.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-36", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "27/130", "extension": "Diamant & Perle", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/DP/FR/27.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-37", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "5/92", "extension": "EX : Créateurs de Légendes", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/LM/FR/5.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-38", "collection": "Ectoplasma", "nom": "Ectoplasma ex", "numero": "108/112", "extension": "EX : Rouge Feu & Vert Feuille", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/RFVF/FR/108.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-39", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "10/144", "extension": "Skyridge", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SK/FR/10.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-40", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "H9/H32", "extension": "Skyridge", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/SK/FR/159.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-41", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "13/165", "extension": "Expedition", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EX/FR/13.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-42", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "48/165", "extension": "Expedition", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/EX/FR/48.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-43", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "11/110", "extension": "Legendary Collection", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/LC/FR/11.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-44", "collection": "Ectoplasma", "nom": "Ectoplasma obscur", "numero": "6/105", "extension": "Neo Destiny", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/N4/FR/6.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-45", "collection": "Ectoplasma", "nom": "Ectoplasma de Morgane", "numero": "29/132", "extension": "Gym Challenge", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/GC/FR/29.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-46", "collection": "Ectoplasma", "nom": "Ectoplasma de Morgane", "numero": "14/132", "extension": "Gym Heroes", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/GH/FR/14.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-47", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "5/62", "extension": "Fossile", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/FO/FR/5.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-48", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "20/62", "extension": "Fossile", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/FO/FR/20.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-49", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "057/091", "extension": "Trick or Trade 2024", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/TOT24/FR/25.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-50", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "066/196", "extension": "Trick or Trade 2023", "rarete": "Promo", "image": "https://pokecardex-scans.b-cdn.net/sets/TOT23/FR/11.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-51", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "057/198", "extension": "Trick or Trade 2022", "rarete": "Promo", "image": "https://pokecardex-scans.b-cdn.net/sets/TOT22/FR/9.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-52", "collection": "Ectoplasma", "nom": "Ectoplasma-V", "numero": "156/264", "extension": "Pack Récompense", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PRZP/FR/202.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-53", "collection": "Ectoplasma", "nom": "Ectoplasma-VMAX", "numero": "157/264", "extension": "Pack Récompense", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PRZP/FR/203.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-54", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "066/196", "extension": "Pack Récompense", "rarete": "Promo", "image": "https://pokecardex-scans.b-cdn.net/sets/PRZP/FR/279.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-55", "collection": "Ectoplasma", "nom": "Ectoplasma-EX", "numero": "34/119", "extension": "Jumbo", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/JUMBO/FR/46.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-56", "collection": "Ectoplasma", "nom": "Ectoplasma (Queengar)", "numero": "18/100", "extension": "World Championships 2009", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/WC09/FR/72.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-57", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "94/151", "extension": "Topps", "rarete": "Promo", "image": "https://pokecardex-scans.b-cdn.net/sets/TOPPS/FR/94.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "ecto-58", "collection": "Ectoplasma", "nom": "Ectoplasma", "numero": "94/150", "extension": "Lamincards 2005", "rarete": "Promo", "image": "https://pokecardex-scans.b-cdn.net/sets/LMN5/FR/94.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-1", "collection": "Jungko", "nom": "Jungko-GX", "numero": "22/214", "extension": "Tonnerre Perdu", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM08/FR/22.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-2", "collection": "Jungko", "nom": "Jungko-GX", "numero": "196/214", "extension": "Tonnerre Perdu", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM08/FR/196.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-3", "collection": "Jungko", "nom": "Jungko-GX", "numero": "216/214", "extension": "Tonnerre Perdu", "rarete": "Secrète", "image": "https://pokecardex-scans.b-cdn.net/sets/SM08/FR/216.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-4", "collection": "Jungko", "nom": "Jungko", "numero": "10/168", "extension": "Tempête Céleste", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/SM07/FR/10.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-5", "collection": "Jungko", "nom": "Jungko-EX", "numero": "7/98", "extension": "Origines Antiques", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AOR/FR/7.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-6", "collection": "Jungko", "nom": "M-Jungko-EX", "numero": "8/98", "extension": "Origines Antiques", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AOR/FR/8.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-7", "collection": "Jungko", "nom": "Lien Spirituel Jungko", "numero": "80/98", "extension": "Origines Antiques", "rarete": "Unco", "image": "https://pokecardex-scans.b-cdn.net/sets/AOR/FR/80.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-8", "collection": "Jungko", "nom": "Jungko-EX", "numero": "84/98", "extension": "Origines Antiques", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AOR/FR/84.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-9", "collection": "Jungko", "nom": "M-Jungko-EX", "numero": "85/98", "extension": "Origines Antiques", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AOR/FR/85.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-10", "collection": "Jungko", "nom": "Jungko", "numero": "8/160", "extension": "Primo-Choc", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/PRC/FR/8.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-11", "collection": "Jungko", "nom": "Jungko", "numero": "9/160", "extension": "Primo-Choc", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/PRC/FR/9.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-12", "collection": "Jungko", "nom": "Jungko", "numero": "8/116", "extension": "Glaciation Plasma", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/PLF/FR/8.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-13", "collection": "Jungko", "nom": "Jungko", "numero": "30/99", "extension": "Platine : Arceus", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AR/FR/30.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-14", "collection": "Jungko", "nom": "Jungko", "numero": "31/99", "extension": "Platine : Arceus", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/AR/FR/31.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-15", "collection": "Jungko", "nom": "Jungko", "numero": "10/100", "extension": "Diamant & Perle : Tempête", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/SF/FR/10.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-16", "collection": "Jungko", "nom": "Jungko", "numero": "8/106", "extension": "Diamant & Perle : Duels au Sommet", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/GE/FR/8.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-17", "collection": "Jungko", "nom": "Jungko ex δ Espèces Delta", "numero": "96/100", "extension": "EX : Gardiens de Cristal", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/CG/FR/96.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-18", "collection": "Jungko", "nom": "Jungko", "numero": "10/106", "extension": "EX : Émeraude", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/EM/FR/10.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-19", "collection": "Jungko", "nom": "Jungko ex", "numero": "93/95", "extension": "EX : Team Magma VS Team Aqua", "rarete": "Ultra-rare", "image": "https://pokecardex-scans.b-cdn.net/sets/TMTA/FR/93.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-20", "collection": "Jungko", "nom": "Jungko", "numero": "11/109", "extension": "EX : Rubis & Saphir", "rarete": "Holographique", "image": "https://pokecardex-scans.b-cdn.net/sets/RS/FR/11.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-21", "collection": "Jungko", "nom": "Jungko", "numero": "20/109", "extension": "EX : Rubis & Saphir", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/RS/FR/20.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-22", "collection": "Jungko", "nom": "Jungko", "numero": "5/17", "extension": "POP 4", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/POP4/FR/5.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-23", "collection": "Jungko", "nom": "Jungko", "numero": "4/17", "extension": "POP 1", "rarete": "Rare", "image": "https://pokecardex-scans.b-cdn.net/sets/POP1/FR/4.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}, {"id": "jgk-24", "collection": "Jungko", "nom": "Jungko", "numero": "012/150", "extension": "Lamincards 2006", "rarete": "Promo", "image": "https://pokecardex-scans.b-cdn.net/sets/LMN6/FR/12.jpg", "versions": ["Standard", "Reverse"], "langues": ["FR"]}], "possessions": [{"id": "seed-p1", "cardId": "em-1", "version": "Non Holo", "langue": "FR"}, {"id": "seed-p2", "cardId": "em-2", "version": "Standard", "langue": "FR"}, {"id": "seed-p3", "cardId": "em-3", "version": "Staff (National Championships)", "langue": "FR"}, {"id": "seed-p4", "cardId": "em-3", "version": "Tampon (National Championships)", "langue": "FR"}, {"id": "seed-p5", "cardId": "em-4", "version": "Reverse", "langue": "FR"}, {"id": "seed-p6", "cardId": "em-6", "version": "Standard", "langue": "FR"}, {"id": "seed-p7", "cardId": "em-7", "version": "Standard", "langue": "FR"}, {"id": "seed-p8", "cardId": "em-7", "version": "Non Holo", "langue": "FR"}, {"id": "seed-p9", "cardId": "em-8", "version": "Standard", "langue": "FR"}, {"id": "seed-p10", "cardId": "em-10", "version": "Non Holo", "langue": "FR"}, {"id": "seed-p11", "cardId": "em-11", "version": "Non Holo", "langue": "FR"}, {"id": "seed-p12", "cardId": "em-12", "version": "Standard", "langue": "FR"}, {"id": "seed-p13", "cardId": "em-15", "version": "Standard", "langue": "FR"}, {"id": "seed-p14", "cardId": "em-16", "version": "Standard", "langue": "FR"}, {"id": "seed-p15", "cardId": "em-20", "version": "Reverse", "langue": "FR"}, {"id": "seed-p16", "cardId": "em-23", "version": "Standard", "langue": "FR"}, {"id": "seed-p17", "cardId": "em-23", "version": "Reverse", "langue": "FR"}, {"id": "seed-p18", "cardId": "em-26", "version": "Reverse", "langue": "FR"}, {"id": "seed-p19", "cardId": "em-29", "version": "Tampon (PreRelease)", "langue": "FR"}, {"id": "seed-p20", "cardId": "em-32", "version": "Standard", "langue": "FR"}, {"id": "seed-p21", "cardId": "em-33", "version": "Standard", "langue": "FR"}, {"id": "seed-p22", "cardId": "em-35", "version": "Tampon (Regional Championships)", "langue": "FR"}, {"id": "seed-p23", "cardId": "em-35", "version": "Tampon (State Championships)", "langue": "FR"}, {"id": "seed-p24", "cardId": "em-36", "version": "Standard", "langue": "FR"}, {"id": "seed-p25", "cardId": "em-36", "version": "Reverse", "langue": "FR"}, {"id": "seed-p26", "cardId": "em-40", "version": "Standard", "langue": "FR"}, {"id": "seed-p27", "cardId": "em-44", "version": "Standard", "langue": "FR"}, {"id": "seed-p28", "cardId": "em-45", "version": "Standard", "langue": "FR"}, {"id": "seed-p29", "cardId": "em-47", "version": "Standard", "langue": "FR"}, {"id": "seed-p30", "cardId": "em-49", "version": "Standard", "langue": "FR"}, {"id": "seed-p31", "cardId": "em-51", "version": "Standard", "langue": "FR"}, {"id": "seed-p32", "cardId": "em-52", "version": "Standard", "langue": "FR"}, {"id": "seed-p33", "cardId": "em-55", "version": "Reverse", "langue": "FR"}, {"id": "seed-p34", "cardId": "em-56", "version": "Standard", "langue": "FR"}, {"id": "seed-p35", "cardId": "em-56", "version": "Tampon (Wizard World)", "langue": "FR"}, {"id": "seed-p36", "cardId": "em-57", "version": "Standard", "langue": "FR"}, {"id": "seed-p37", "cardId": "em-57", "version": "Reverse", "langue": "FR"}, {"id": "seed-p38", "cardId": "em-58", "version": "Standard", "langue": "FR"}, {"id": "seed-p39", "cardId": "em-59", "version": "Tampon (Nintendo World)", "langue": "FR"}, {"id": "seed-p40", "cardId": "em-60", "version": "Standard", "langue": "FR"}, {"id": "seed-p41", "cardId": "em-60", "version": "Reverse Non Holo", "langue": "FR"}, {"id": "seed-p42", "cardId": "em-60", "version": "Tampon (Comic-Con)", "langue": "FR"}, {"id": "seed-p43", "cardId": "em-62", "version": "Standard", "langue": "FR"}, {"id": "seed-p44", "cardId": "em-63", "version": "Standard", "langue": "FR"}, {"id": "seed-p45", "cardId": "em-65", "version": "Standard", "langue": "FR"}, {"id": "seed-p46", "cardId": "em-68", "version": "Standard", "langue": "FR"}, {"id": "seed-p47", "cardId": "em-68", "version": "Reverse", "langue": "FR"}, {"id": "seed-p48", "cardId": "em-69", "version": "Standard", "langue": "FR"}, {"id": "seed-p49", "cardId": "em-69", "version": "Reverse", "langue": "FR"}, {"id": "seed-p50", "cardId": "em-69", "version": "Tampon (Wizard World)", "langue": "FR"}, {"id": "seed-p51", "cardId": "em-70", "version": "Tampon (GenCon)", "langue": "FR"}, {"id": "seed-p52", "cardId": "em-72", "version": "Standard", "langue": "FR"}, {"id": "seed-p53", "cardId": "em-73", "version": "Standard", "langue": "FR"}, {"id": "seed-p54", "cardId": "em-73", "version": "Tampon (City Championships)", "langue": "FR"}, {"id": "seed-p55", "cardId": "em-77", "version": "Standard", "langue": "FR"}, {"id": "seed-p56", "cardId": "em-77", "version": "Reverse", "langue": "FR"}, {"id": "seed-p57", "cardId": "em-79", "version": "Standard", "langue": "FR"}, {"id": "seed-p58", "cardId": "em-81", "version": "Standard", "langue": "FR"}, {"id": "seed-p59", "cardId": "em-81", "version": "Reverse", "langue": "FR"}, {"id": "seed-p60", "cardId": "em-82", "version": "Standard", "langue": "FR"}, {"id": "seed-p61", "cardId": "em-82", "version": "Tampon (Professor Program)", "langue": "FR"}, {"id": "seed-p62", "cardId": "em-85", "version": "Reverse", "langue": "FR"}, {"id": "seed-p63", "cardId": "em-94", "version": "Standard", "langue": "FR"}, {"id": "seed-p64", "cardId": "em-95", "version": "Standard", "langue": "FR"}, {"id": "seed-p65", "cardId": "em-99", "version": "Standard", "langue": "FR"}, {"id": "seed-p66", "cardId": "em-105", "version": "Standard", "langue": "FR"}, {"id": "seed-p67", "cardId": "em-106", "version": "Standard", "langue": "FR"}, {"id": "seed-p68", "cardId": "em-107", "version": "Standard", "langue": "FR"}], "cotes": []};
+
+const STORAGE_KEY = "pokecollec_v3";
+const OLD_KEYS = ["pokecollec_v2"];
+const COLLECTIONS = ["Ectoplasma", "Jungko", "EX Émeraude"];
+const ETAT_ABBR = {"Mint":"M","Near Mint":"NM","Excellent":"EX","Très bien":"TB","Bien":"B","Passable":"P"};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function migrate(data){
+  data.meta = data.meta || {};
+  if(!data.meta.firstUse) data.meta.firstUse = Date.now();
+  if(data.meta.lastExport === undefined) data.meta.lastExport = null;
+  if(data.meta.localImages === undefined) data.meta.localImages = false;
+  if(data.meta.updatedAt === undefined) data.meta.updatedAt = Date.now();
+  data.cards = data.cards || [];
+  data.possessions = (data.possessions || []).map(p => ({ etat: p.etat ?? null, gradeur: p.gradeur ?? null, grade: p.grade ?? null, note: p.note ?? null, ...p }));
+  data.cotes = data.cotes || [];
+  return data;
+}
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return migrate(JSON.parse(raw));
+    for(const k of OLD_KEYS){
+      const old = localStorage.getItem(k);
+      if(old) return migrate(JSON.parse(old));
+    }
+  }catch(e){ console.error("Erreur de lecture:", e); }
+  return migrate(JSON.parse(JSON.stringify(SEED)));
+}
+
+let state = loadData();
+let currentCollection = COLLECTIONS[0];
+let currentView = "collection"; // collection | hunt
+let currentFilter = "all";
+let currentSearch = "";
+let currentSort = "numero";
+let groupByExt = false;
+let detailCardId = null;
+let editingCardId = null;
+let editingPoss = null; // {version, langue}
+let pendingImport = null;
+
+/* ============================================================
+   SAUVEGARDE : localStorage + fichier lié (File System Access)
+============================================================ */
+const idb = {
+  db(){ return new Promise((res,rej)=>{ const r=indexedDB.open("pokecollec-fs",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async get(k){ const d=await this.db(); return new Promise((res,rej)=>{ const t=d.transaction("kv","readonly").objectStore("kv").get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); },
+  async set(k,v){ const d=await this.db(); return new Promise((res,rej)=>{ const t=d.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+  async del(k){ const d=await this.db(); return new Promise((res,rej)=>{ const t=d.transaction("kv","readwrite"); t.objectStore("kv").delete(k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+};
+let fileHandle = null;
+let fsWriteTimer = null;
+let fsState = "none"; // none | linked-inactive | active | error
+
+function setFsStatus(){
+  const el = byId("fsStatus");
+  if(fsState === "active"){ el.textContent = "Sauvegarde : fichier lié ✓ (+ navigateur)"; el.className = "fs-status ok"; }
+  else if(fsState === "linked-inactive"){ el.textContent = "Fichier lié — cliquer ci-dessus pour réactiver"; el.className = "fs-status warn"; }
+  else if(fsState === "error"){ el.textContent = "Écriture fichier impossible — vérifier le fichier"; el.className = "fs-status warn"; }
+  else { el.textContent = window.showSaveFilePicker ? "Sauvegarde : navigateur uniquement" : "Sauvegarde : navigateur (fichier lié non supporté ici)"; el.className = "fs-status"; }
+}
+async function writeToFile(){
+  if(!fileHandle) return;
+  try{
+    const w = await fileHandle.createWritable();
+    await w.write(JSON.stringify(state, null, 2));
+    await w.close();
+    if(fsState !== "active"){ fsState = "active"; setFsStatus(); }
+    state.meta.lastExport = Date.now();
+  }catch(e){
+    console.error("Écriture fichier:", e);
+    fsState = "error"; setFsStatus();
+  }
+}
+function saveData(){
+  state.meta.updatedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if(fileHandle){
+    clearTimeout(fsWriteTimer);
+    fsWriteTimer = setTimeout(writeToFile, 600);
+  }
+  schedulePush();
+  renderBanner();
+}
+async function linkFile(){
+  if(!window.showSaveFilePicker){ alert("Ton navigateur ne supporte pas la liaison de fichier (Chrome/Edge requis). Utilise l'export JSON régulier."); return; }
+  try{
+    // Si un handle existe déjà mais inactif : redemander la permission
+    if(fileHandle && fsState === "linked-inactive"){
+      const perm = await fileHandle.requestPermission({mode:"readwrite"});
+      if(perm === "granted"){ await writeToFile(); toast("Sauvegarde fichier réactivée."); return; }
+    }
+    const h = await window.showSaveFilePicker({
+      suggestedName: "pokecollec-donnees.json",
+      types: [{description:"JSON", accept:{"application/json":[".json"]}}]
+    });
+    fileHandle = h;
+    await idb.set("handle", h);
+    await writeToFile();
+    toast("Fichier de sauvegarde lié — écriture automatique activée.");
+  }catch(e){ if(e.name !== "AbortError") console.error(e); }
+}
+async function restoreHandle(){
+  try{
+    const h = await idb.get("handle");
+    if(!h) return;
+    fileHandle = h;
+    const perm = await h.queryPermission({mode:"readwrite"});
+    if(perm === "granted"){ fsState = "active"; }
+    else { fsState = "linked-inactive"; }
+    setFsStatus();
+  }catch(e){ console.error(e); }
+}
+
+/* ============================================================
+   SYNCHRO GITHUB (Gist secret)
+============================================================ */
+const SYNC_KEY = "pokecollec_sync";
+const GIST_FILE = "pokecollec-donnees.json";
+let syncCfg = null;
+try{ syncCfg = JSON.parse(localStorage.getItem(SYNC_KEY) || "null"); }catch(e){}
+syncCfg = syncCfg || { token:null, gistId:null, lastRemote:null, lastLocalAtSync:null };
+let syncTimer = null, applyingRemote = false, conflictMeta = null;
+
+function saveSyncCfg(){ localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }
+function syncConfigured(){ return !!(syncCfg.token && syncCfg.gistId); }
+function setSyncStatus(txt, cls=""){
+  const el = byId("syncStatus");
+  el.textContent = "Synchro : " + txt;
+  el.className = "fs-status" + (cls ? " " + cls : "");
+}
+async function gistApi(method, path, body){
+  const res = await fetch("https://api.github.com" + path, {
+    method,
+    headers: {
+      "Authorization": "Bearer " + syncCfg.token,
+      "Accept": "application/vnd.github+json",
+      ...(body ? {"Content-Type": "application/json"} : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if(!res.ok){
+    const detail = res.status === 401 ? "token invalide ou expiré" : res.status === 404 ? "gist introuvable" : "erreur " + res.status;
+    throw new Error(detail);
+  }
+  return res.json();
+}
+async function readGistState(g){
+  const f = g.files[GIST_FILE];
+  if(!f) return null;
+  let content = f.content;
+  if(f.truncated){ content = await (await fetch(f.raw_url)).text(); }
+  return JSON.parse(content);
+}
+async function pushToGist(force = false){
+  if(!syncConfigured()) return;
+  setSyncStatus("envoi…");
+  try{
+    const meta = await gistApi("GET", "/gists/" + syncCfg.gistId);
+    if(!force && syncCfg.lastRemote && meta.updated_at !== syncCfg.lastRemote){
+      // Le gist a bougé depuis notre dernière synchro : un autre appareil a écrit
+      conflictMeta = meta;
+      openConflict(meta);
+      setSyncStatus("conflit à résoudre", "warn");
+      return;
+    }
+    const r = await gistApi("PATCH", "/gists/" + syncCfg.gistId, {
+      files: { [GIST_FILE]: { content: JSON.stringify(state) } }
+    });
+    syncCfg.lastRemote = r.updated_at;
+    syncCfg.lastLocalAtSync = state.meta.updatedAt;
+    saveSyncCfg();
+    state.meta.lastExport = Date.now();
+    setSyncStatus("à jour ✓ " + new Date().toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"}), "ok");
+  }catch(e){
+    console.error("Push gist:", e);
+    setSyncStatus(navigator.onLine === false ? "hors ligne — reprise auto" : e.message, "warn");
+  }
+}
+function schedulePush(){
+  if(!syncConfigured() || applyingRemote) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => pushToGist(), 1500);
+}
+async function pullFromGist(){
+  if(!syncConfigured()) return;
+  setSyncStatus("récupération…");
+  try{
+    const g = await gistApi("GET", "/gists/" + syncCfg.gistId);
+    const data = await readGistState(g);
+    if(!data){ setSyncStatus("gist vide — pousse d'abord tes données", "warn"); return; }
+    applyRemote(data, g.updated_at);
+    setSyncStatus("à jour ✓ " + new Date().toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"}), "ok");
+    toast("Données récupérées depuis le cloud.");
+  }catch(e){
+    console.error("Pull gist:", e);
+    setSyncStatus(e.message, "warn");
+  }
+}
+function applyRemote(data, remoteUpdatedAt){
+  applyingRemote = true;
+  state = migrate(data);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  syncCfg.lastRemote = remoteUpdatedAt;
+  syncCfg.lastLocalAtSync = state.meta.updatedAt;
+  saveSyncCfg();
+  applyingRemote = false;
+  if(fileHandle) writeToFile();
+  render();
+}
+function openConflict(gistMeta){
+  const remoteDate = new Date(gistMeta.updated_at);
+  const localDate = new Date(state.meta.updatedAt);
+  byId("conflictInfo").innerHTML = `
+    <b>Version cloud</b> (autre appareil) : modifiée le ${remoteDate.toLocaleString("fr-FR")}<br>
+    <b>Version locale</b> (cet appareil) : modifiée le ${localDate.toLocaleString("fr-FR")}<br><br>
+    Choisis laquelle conserver — l'autre sera écrasée. En cas de doute,
+    exporte d'abord la version locale (bouton Exporter) pour ne rien perdre.`;
+  show("conflictOverlay");
+}
+async function initSync(){
+  if(!syncConfigured()){ setSyncStatus("non configurée"); return; }
+  setSyncStatus("vérification…");
+  try{
+    const g = await gistApi("GET", "/gists/" + syncCfg.gistId);
+    const localChanged = syncCfg.lastLocalAtSync !== null && state.meta.updatedAt > syncCfg.lastLocalAtSync;
+    const remoteChanged = syncCfg.lastRemote !== null && g.updated_at !== syncCfg.lastRemote;
+    if(remoteChanged && localChanged){
+      conflictMeta = g;
+      openConflict(g);
+      setSyncStatus("conflit à résoudre", "warn");
+    } else if(remoteChanged || syncCfg.lastRemote === null){
+      // Le cloud est plus récent (ou premier lien) : on récupère
+      const data = await readGistState(g);
+      if(data){ applyRemote(data, g.updated_at); setSyncStatus("à jour ✓", "ok"); }
+      else { syncCfg.lastRemote = g.updated_at; saveSyncCfg(); pushToGist(true); }
+    } else if(localChanged){
+      pushToGist();
+    } else {
+      setSyncStatus("à jour ✓", "ok");
+    }
+  }catch(e){
+    setSyncStatus(navigator.onLine === false ? "hors ligne" : e.message, "warn");
+  }
+}
+window.addEventListener("online", () => { if(syncConfigured()) pushToGist(); });
+
+/* ============================================================
+   HELPERS
+============================================================ */
+const byId = id => document.getElementById(id);
+
+// --- UI de configuration
+byId("c_keepLocal").onclick = () => { hide("conflictOverlay"); pushToGist(true); };
+byId("c_keepRemote").onclick = async () => {
+  hide("conflictOverlay");
+  if(conflictMeta){
+    try{
+      const data = await readGistState(conflictMeta);
+      if(data) applyRemote(data, conflictMeta.updated_at);
+      setSyncStatus("à jour ✓", "ok");
+      toast("Version cloud restaurée.");
+    }catch(e){ setSyncStatus(e.message, "warn"); }
+  } else { pullFromGist(); }
+};
+function renderSyncModal(){
+  byId("s_token").value = syncCfg.token || "";
+  byId("s_gist").value = syncCfg.gistId || "";
+  const connected = syncConfigured();
+  byId("s_disconnect").style.display = connected ? "inline-block" : "none";
+  byId("s_pull").style.display = connected ? "inline-block" : "none";
+  byId("s_push").style.display = connected ? "inline-block" : "none";
+  byId("s_connect").textContent = connected ? "Mettre à jour" : "Connecter";
+  byId("syncInfo").textContent = connected
+    ? `Connecté au gist ${syncCfg.gistId.slice(0,10)}… — chaque modification est envoyée automatiquement.`
+    : "";
+}
+byId("btnSync").onclick = () => { renderSyncModal(); show("syncOverlay"); };
+byId("s_connect").onclick = async () => {
+  const token = byId("s_token").value.trim();
+  let gistId = byId("s_gist").value.trim();
+  if(!token){ toast("Colle ton token GitHub."); return; }
+  syncCfg.token = token;
+  try{
+    if(!gistId){
+      // Création d'un gist secret
+      setSyncStatus("création du gist…");
+      const g = await gistApi("POST", "/gists", {
+        description: "Pokecollec — données de collection (privé)",
+        public: false,
+        files: { [GIST_FILE]: { content: JSON.stringify(state) } }
+      });
+      gistId = g.id;
+      syncCfg.gistId = gistId;
+      syncCfg.lastRemote = g.updated_at;
+      syncCfg.lastLocalAtSync = state.meta.updatedAt;
+      saveSyncCfg();
+      byId("s_gist").value = gistId;
+      setSyncStatus("à jour ✓", "ok");
+      toast("Gist créé — note son ID pour tes autres appareils.");
+    } else {
+      syncCfg.gistId = gistId;
+      saveSyncCfg();
+      await initSync();
+      toast("Appareil connecté au gist.");
+    }
+    renderSyncModal();
+  }catch(e){
+    setSyncStatus(e.message, "warn");
+    alert("Connexion impossible : " + e.message);
+  }
+};
+byId("s_pull").onclick = pullFromGist;
+byId("s_push").onclick = () => pushToGist(true);
+byId("s_disconnect").onclick = () => {
+  if(!confirm("Déconnecter cet appareil ? Les données locales sont conservées, seule la synchro s'arrête.")) return;
+  syncCfg = { token:null, gistId:null, lastRemote:null, lastLocalAtSync:null };
+  saveSyncCfg();
+  renderSyncModal();
+  setSyncStatus("non configurée");
+  toast("Synchro déconnectée.");
+};
+
+
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function cardsOf(col){ return state.cards.filter(c => c.collection === col); }
+function getCard(id){ return state.cards.find(c => c.id === id); }
+function possOf(cardId){ return state.possessions.filter(p => p.cardId === cardId); }
+function cotesOf(cardId){ return state.cotes.filter(k => k.cardId === cardId); }
+function getPoss(cardId, version, langue){ return state.possessions.find(p => p.cardId === cardId && p.version === version && p.langue === langue); }
+function requiredVersions(card){
+  const opt = card.versionsOpt || [];
+  return (card.versions || []).filter(v => !opt.includes(v));
+}
+function cardStatus(card){
+  const poss = possOf(card.id);
+  const req = requiredVersions(card);
+  if(req.length === 0){
+    // Aucune version obligatoire : statut basé sur la simple possession
+    if(poss.some(p => p.langue === "FR")) return "fr";
+    if(poss.length > 0) return "other";
+    return "missing";
+  }
+  // Complète = toutes les versions obligatoires possédées en FR
+  if(req.every(v => poss.some(p => p.version === v && p.langue === "FR"))) return "fr";
+  if(poss.length > 0) return "other";
+  return "missing";
+}
+function isGradedPoss(p){ return !!(p.gradeur && p.grade); }
+function possLabel(p){
+  if(isGradedPoss(p)) return `${p.gradeur} ${p.grade}`;
+  if(p.etat) return ETAT_ABBR[p.etat] || p.etat;
+  if(p.note) return p.note;
+  return null;
+}
+function possTooltip(p){
+  const parts = [];
+  if(p.etat) parts.push("État : " + p.etat);
+  if(isGradedPoss(p)) parts.push("Gradée " + p.gradeur + " " + p.grade);
+  if(p.note) parts.push(p.note);
+  return parts.join(" · ") || "Ajouter état / grade / note";
+}
+function toast(msg){
+  const t = byId("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove("show"), 2000);
+}
+function fmtEuro(v){
+  if(v === undefined || v === null || v === "") return "—";
+  return Number(v).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
+}
+function fmtDate(v){
+  if(!v) return "—";
+  const d = new Date(v+"T00:00:00");
+  return isNaN(d) ? v : d.toLocaleDateString("fr-FR");
+}
+function show(id){ byId(id).classList.add("show"); }
+function hide(id){ byId(id).classList.remove("show"); }
+
+function versionPill(v, extra=""){
+  const norm = v.trim().toLowerCase();
+  if(norm === "standard") return `<span class="vpill standard ${extra}" data-pill="${esc(v)}" title="Standard">STD</span>`;
+  if(norm === "reverse")  return `<span class="vpill reverse ${extra}" data-pill="${esc(v)}" title="Reverse">RV</span>`;
+  return `<span class="vpill other ${extra}" data-pill="${esc(v)}" title="${esc(v)}">${esc(v)}</span>`;
+}
+function imgSrc(card){
+  return state.meta.localImages ? `images/${card.id}.jpg` : (card.image || "");
+}
+function imgTag(card, cls){
+  const cdn = esc(card.image || "");
+  if(state.meta.localImages && cdn){
+    return `<img class="${cls}" loading="lazy" src="images/${esc(card.id)}.jpg" alt="${esc(card.nom)}" onerror="this.onerror=null;this.src='${cdn}'">`;
+  }
+  return `<img class="${cls}" loading="lazy" src="${cdn}" alt="${esc(card.nom)}" onerror="this.style.display='none'">`;
+}
+
+/* ============================================================
+   CÔTES & VALEUR
+============================================================ */
+function latestCote(cardId, opts = {}){
+  let ks = cotesOf(cardId);
+  if(!ks.length) return null;
+  if(opts.version){
+    const f = ks.filter(k => k.version === opts.version);
+    if(f.length) ks = f;
+  }
+  if(opts.etat){
+    const f = ks.filter(k => k.etat === opts.etat);
+    if(f.length) ks = f;
+  }
+  return ks.slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")))[0];
+}
+function possValue(p){
+  const k = latestCote(p.cardId, {etat: p.etat || (isGradedPoss(p) ? "Gradée" : null), version: p.version});
+  return k ? Number(k.prix) : null;
+}
+function collectionStats(col){
+  const cards = cardsOf(col);
+  let fr=0, other=0, missing=0, owned=0;
+  let totalReq=0, reqFr=0, reqAny=0;
+  let valOwned=0, nOwnedValued=0, nOwnedTotal=0;
+  let valMissing=0, nMissingValued=0, nMissingTotal=0;
+  cards.forEach(c => {
+    const s = cardStatus(c);
+    if(s==="fr") fr++; else if(s==="other") other++; else missing++;
+    if(s!=="missing") owned++;
+    // Unités de complétion : chaque version obligatoire compte pour 1
+    const poss = possOf(c.id);
+    requiredVersions(c).forEach(v => {
+      totalReq++;
+      if(poss.some(p => p.version === v && p.langue === "FR")) reqFr++;
+      if(poss.some(p => p.version === v)) reqAny++;
+    });
+    if(s==="missing"){
+      nMissingTotal++;
+      const k = latestCote(c.id);
+      if(k){ valMissing += Number(k.prix); nMissingValued++; }
+    }
+  });
+  state.possessions.forEach(p => {
+    const c = getCard(p.cardId);
+    if(!c || c.collection !== col) return;
+    nOwnedTotal++;
+    const v = possValue(p);
+    if(v !== null){ valOwned += v; nOwnedValued++; }
+  });
+  return { total: cards.length, fr, other, missing, owned, totalReq, reqFr, reqAny, valOwned, nOwnedValued, nOwnedTotal, valMissing, nMissingValued, nMissingTotal };
+}
+
+/* ============================================================
+   RENDER : onglets, entête, progression, bannière
+============================================================ */
+function renderTabs(){
+  const list = byId("tabList");
+  list.innerHTML = "";
+  COLLECTIONS.forEach(col => {
+    const n = cardsOf(col).length;
+    const div = document.createElement("div");
+    div.className = "tab" + (currentView === "collection" && col === currentCollection ? " active" : "");
+    div.innerHTML = `<span>${esc(col)}</span><span class="tab-count">${n}</span>`;
+    div.onclick = () => { currentView = "collection"; currentCollection = col; render(); };
+    list.appendChild(div);
+  });
+  // Onglet transversal Chasse
+  const nWish = state.cards.filter(c => c.wishlist).length;
+  const hunt = document.createElement("div");
+  hunt.className = "tab tab-hunt" + (currentView === "hunt" ? " active" : "");
+  hunt.innerHTML = `<span>★ Chasse</span><span class="tab-count">${nWish}</span>`;
+  hunt.onclick = () => { currentView = "hunt"; render(); };
+  list.appendChild(hunt);
+}
+function renderHeader(){
+  const s = collectionStats(currentCollection);
+  byId("viewTitle").innerHTML = esc(currentCollection) +
+    `<small>${s.total} carte${s.total>1?"s":""} suivie${s.total>1?"s":""}</small>`;
+  byId("statRow").innerHTML = `
+    <div class="stat-pill green" title="Toutes les versions obligatoires possédées en FR"><div class="n">${s.fr}</div><div class="l">Complètes FR</div></div>
+    <div class="stat-pill amber" title="Au moins un exemplaire, mais complétion FR non atteinte"><div class="n">${s.other}</div><div class="l">Partielles</div></div>
+    <div class="stat-pill"><div class="n">${s.missing}</div><div class="l">Manquantes</div></div>
+    <div class="stat-pill gold" title="${s.nOwnedValued}/${s.nOwnedTotal} exemplaire(s) avec côte correspondante">
+      <div class="n">${s.nOwnedValued ? fmtEuro(s.valOwned) : "—"}</div><div class="l">Valeur possédée</div></div>
+    <div class="stat-pill" title="Estimation basée sur la dernière côte de chaque carte manquante (${s.nMissingValued}/${s.nMissingTotal} avec côte)">
+      <div class="n">${s.nMissingValued ? fmtEuro(s.valMissing) : "—"}</div><div class="l">Manquantes est.</div></div>
+  `;
+  const pctFr = s.totalReq ? Math.round(100*s.reqFr/s.totalReq) : 0;
+  const pctAll = s.totalReq ? Math.round(100*s.reqAny/s.totalReq) : 0;
+  byId("progressBlock").innerHTML = `
+    <div class="pbar-row"><span class="pbar-label" title="Chaque version obligatoire compte pour 1">Complétion FR</span>
+      <div class="pbar fr"><div style="width:${pctFr}%"></div></div>
+      <span class="pbar-val">${s.reqFr}/${s.totalReq} versions · ${pctFr}%</span></div>
+    <div class="pbar-row"><span class="pbar-label">Toutes langues</span>
+      <div class="pbar all"><div style="width:${pctAll}%"></div></div>
+      <span class="pbar-val">${s.reqAny}/${s.totalReq} versions · ${pctAll}%</span></div>
+  `;
+}
+function renderBanner(){
+  const zone = byId("bannerZone");
+  const WEEK = 7*24*3600*1000;
+  const last = state.meta.lastExport || state.meta.firstUse;
+  if(fsState !== "active" && Date.now() - last > WEEK){
+    zone.innerHTML = `<div class="banner">⚠ Aucune sauvegarde externe depuis plus de 7 jours — le stockage du navigateur peut être effacé.
+      <button id="bannerExport">Exporter maintenant</button>
+      <button id="bannerLink" style="background:transparent;border:1px solid var(--amber);color:#e5b45e;">Lier un fichier</button></div>`;
+    byId("bannerExport").onclick = doExport;
+    byId("bannerLink").onclick = linkFile;
+  } else zone.innerHTML = "";
+}
+
+/* ============================================================
+   RENDER : grille (tri, groupes, pastilles cliquables)
+============================================================ */
+const RARETE_ORDER = ["Secrète","Illustration Spéciale Rare","Méga Attaque Rare","Ultra Rare","Ultra-rare","Double Rare","Holographique","Rare","Unco","Commune","Promo"];
+function sortCards(cards){
+  const numKey = c => (c.numero||"").padStart ? (c.numero||"") : "";
+  if(currentSort === "numero"){
+    return cards.slice().sort((a,b) => (a.extension||"").localeCompare(b.extension||"") || String(a.numero||"").localeCompare(String(b.numero||""), undefined, {numeric:true}));
+  }
+  if(currentSort === "extension"){
+    return cards.slice().sort((a,b) => (a.extension||"").localeCompare(b.extension||"") || String(a.numero||"").localeCompare(String(b.numero||""), undefined, {numeric:true}));
+  }
+  if(currentSort === "rarete"){
+    const rank = r => { const i = RARETE_ORDER.indexOf(r); return i === -1 ? 999 : i; };
+    return cards.slice().sort((a,b) => rank(a.rarete) - rank(b.rarete) || (a.nom||"").localeCompare(b.nom||""));
+  }
+  if(currentSort === "valeur"){
+    const val = c => { const k = latestCote(c.id); return k ? Number(k.prix) : -1; };
+    return cards.slice().sort((a,b) => val(b) - val(a));
+  }
+  return cards;
+}
+/* ============================================================
+   VUE CHASSE : cibles wishlist toutes collections confondues
+============================================================ */
+function renderHunt(){
+  document.querySelector(".toolbar").style.display = "none";
+  byId("progressBlock").style.display = "none";
+  renderBanner();
+
+  const targets = state.cards.filter(c => c.wishlist)
+    .slice()
+    .sort((a,b) => (a.wishlist.prio||9) - (b.wishlist.prio||9) ||
+                   (a.collection||"").localeCompare(b.collection||""));
+
+  // Stats globales : budget total déclaré + estimation via dernières côtes
+  let budgetTotal = 0, nBudget = 0, coteTotal = 0, nCote = 0;
+  targets.forEach(c => {
+    if(c.wishlist.budget){ budgetTotal += Number(c.wishlist.budget); nBudget++; }
+    const k = latestCote(c.id);
+    if(k){ coteTotal += Number(k.prix); nCote++; }
+  });
+
+  byId("viewTitle").innerHTML = `★ Chasse<small>${targets.length} cible${targets.length>1?"s":""} sur l'ensemble des collections</small>`;
+  byId("statRow").innerHTML = `
+    <div class="stat-pill gold"><div class="n">${nBudget ? fmtEuro(budgetTotal) : "—"}</div><div class="l">Budget total (${nBudget} cible${nBudget>1?"s":""})</div></div>
+    <div class="stat-pill"><div class="n">${nCote ? fmtEuro(coteTotal) : "—"}</div><div class="l">Est. côtes (${nCote}/${targets.length})</div></div>
+  `;
+
+  const grid = byId("grid");
+  grid.innerHTML = "";
+
+  if(targets.length === 0){
+    grid.innerHTML = `<div class="empty-state"><div class="big">Aucune cible</div>
+      Ouvre la fiche d'une carte manquante et clique sur « ☆ Wishlist » pour la marquer comme cible de chasse.</div>`;
+    return;
+  }
+
+  const PRIO_LABEL = {1:"Priorité haute",2:"Priorité moyenne",3:"Priorité basse"};
+  let lastPrio = null;
+  targets.forEach(card => {
+    const prio = card.wishlist.prio || 9;
+    if(prio !== lastPrio){
+      lastPrio = prio;
+      const head = document.createElement("div");
+      head.className = "group-head prio-" + prio;
+      const group = targets.filter(t => (t.wishlist.prio||9) === prio);
+      head.innerHTML = `<span>${PRIO_LABEL[prio] || "Sans priorité"}</span><small>${group.length} carte${group.length>1?"s":""}</small>`;
+      grid.appendChild(head);
+    }
+    grid.appendChild(renderHuntTile(card));
+  });
+}
+
+function renderHuntTile(card){
+  const el = renderTile(card);
+  // Bandeau chasse : collection + comparaison budget / dernière côte
+  const k = latestCote(card.id);
+  const budget = card.wishlist.budget ? Number(card.wishlist.budget) : null;
+  let dealHtml = "";
+  if(budget !== null && k){
+    const diff = Number(k.prix) - budget;
+    if(diff <= 0) dealHtml = `<span class="hunt-deal ok" title="Dernière côte sous le budget">✓ Dans le budget (${fmtEuro(k.prix)})</span>`;
+    else dealHtml = `<span class="hunt-deal over" title="Dernière côte au-dessus du budget">+${fmtEuro(diff)} vs budget</span>`;
+  } else if(k){
+    dealHtml = `<span class="hunt-deal">Côte : ${fmtEuro(k.prix)}</span>`;
+  } else if(budget !== null){
+    dealHtml = `<span class="hunt-deal">Budget : ${fmtEuro(budget)} · pas de côte relevée</span>`;
+  } else {
+    dealHtml = `<span class="hunt-deal">Ni budget ni côte — à renseigner</span>`;
+  }
+  const foot = document.createElement("div");
+  foot.className = "hunt-foot";
+  foot.innerHTML = `<span class="hunt-col">${esc(card.collection)}</span>${dealHtml}`;
+  el.appendChild(foot);
+  return el;
+}
+
+function render(){
+  renderTabs();
+  if(currentView === "hunt"){ renderHunt(); return; }
+  document.querySelector(".toolbar").style.display = "";
+  byId("progressBlock").style.display = "";
+  renderHeader();
+  renderBanner();
+  const grid = byId("grid");
+  grid.innerHTML = "";
+
+  let cards = cardsOf(currentCollection);
+  if(currentSearch.trim()){
+    const q = currentSearch.trim().toLowerCase();
+    cards = cards.filter(c =>
+      (c.nom||"").toLowerCase().includes(q) ||
+      (c.extension||"").toLowerCase().includes(q) ||
+      (c.numero||"").toLowerCase().includes(q) ||
+      (c.rarete||"").toLowerCase().includes(q)
+    );
+  }
+  cards = cards.filter(c => {
+    const s = cardStatus(c);
+    if(currentFilter === "all") return true;
+    if(currentFilter === "owned") return s !== "missing";
+    if(currentFilter === "missing") return s === "missing";
+    if(currentFilter === "missing-fr") return s !== "fr";
+    if(currentFilter === "wishlist") return !!c.wishlist;
+    if(currentFilter === "graded") return possOf(c.id).some(isGradedPoss);
+    return true;
+  });
+
+  if(currentFilter === "wishlist"){
+    cards = cards.slice().sort((a,b) => (a.wishlist?.prio||9) - (b.wishlist?.prio||9));
+  } else {
+    cards = sortCards(cards);
+  }
+
+  if(cards.length === 0){
+    grid.innerHTML = `<div class="empty-state"><div class="big">Rien ici</div>Ajoute une carte ou change de filtre.</div>`;
+    return;
+  }
+
+  let lastGroup = null;
+  cards.forEach(card => {
+    if(groupByExt){
+      const g = card.extension || "Sans extension";
+      if(g !== lastGroup){
+        lastGroup = g;
+        const inGroup = cards.filter(c => (c.extension||"Sans extension") === g);
+        const ownedFr = inGroup.filter(c => cardStatus(c) === "fr").length;
+        const head = document.createElement("div");
+        head.className = "group-head";
+        head.innerHTML = `<span>${esc(g)}</span><small>${ownedFr}/${inGroup.length} en FR</small>`;
+        grid.appendChild(head);
+      }
+    }
+    grid.appendChild(renderTile(card));
+  });
+}
+function renderTile(card){
+  const status = cardStatus(card);
+  const el = document.createElement("div");
+  el.className = "slot status-" + status;
+  el.onclick = () => openDetail(card.id);
+
+  let badge;
+  if(status === "fr") badge = `<span class="badge fr">FR ✓</span>`;
+  else if(status === "other"){
+    const langs = [...new Set(possOf(card.id).map(p=>p.langue))].join("/");
+    badge = `<span class="badge other">${esc(langs)}</span>`;
+  } else badge = `<span class="badge missing">Manquante</span>`;
+  if(card.wishlist){
+    const prio = {1:"haute",2:"moy.",3:"basse"}[card.wishlist.prio] || "";
+    badge += `<span class="badge wish">★ ${prio}${card.wishlist.budget ? " · ≤"+Number(card.wishlist.budget)+"€" : ""}</span>`;
+  }
+
+  const mainLang = (card.langues||[]).includes("FR") ? "FR" : (card.langues||[])[0] || "FR";
+  const versionPills = (card.versions||[]).map(v => {
+    const owned = !!getPoss(card.id, v, mainLang);
+    const opt = (card.versionsOpt||[]).includes(v) ? " opt" : "";
+    return versionPill(v, (owned ? "" : "dim") + opt);
+  }).join(" ");
+
+  const langChips = (card.langues||[]).map(l => {
+    const owned = possOf(card.id).some(p => p.langue === l);
+    return `<span class="mini-chip${owned ? " on" : ""}">${esc(l)}</span>`;
+  }).join("");
+
+  const k = latestCote(card.id);
+  const valueChip = k ? `<span class="slot-value" title="Dernière côte (${esc(k.etat)}${k.date ? " · "+fmtDate(k.date) : ""})">${fmtEuro(k.prix)}</span>` : "";
+
+  el.innerHTML = `
+    <div class="card-img-wrap">
+      <span class="slot-num">${esc(card.numero||"")}</span>
+      <span class="slot-status-badge">${badge}</span>
+      ${valueChip}
+      ${imgTag(card, "card-img")}
+    </div>
+    <div class="slot-name">${esc(card.nom||"Sans nom")}</div>
+    <div class="slot-meta">${esc(card.extension||"")}${card.rarete ? " · "+esc(card.rarete) : ""}</div>
+    <div class="slot-tags" data-pills title="Clic sur une pastille = possédée en ${esc(mainLang)}">${versionPills}</div>
+    <div class="slot-tags">${langChips}</div>
+  `;
+
+  // Pastilles cliquables : bascule la possession dans la langue principale
+  el.querySelectorAll("[data-pill]").forEach(pill => {
+    pill.onclick = (e) => {
+      e.stopPropagation();
+      const v = pill.dataset.pill;
+      const p = getPoss(card.id, v, mainLang);
+      if(p){
+        state.possessions = state.possessions.filter(x => x.id !== p.id);
+        toast(`Retiré : ${v} · ${mainLang}`);
+      } else {
+        state.possessions.push({ id: uid(), cardId: card.id, version: v, langue: mainLang, etat:null, gradeur:null, grade:null, note:null });
+        toast(`Ajouté : ${v} · ${mainLang}`);
+      }
+      saveData();
+      render();
+    };
+  });
+  return el;
+}
+
+/* ============================================================
+   DÉTAIL
+============================================================ */
+function openDetail(cardId){
+  detailCardId = cardId;
+  renderDetail();
+  show("detailOverlay");
+}
+function sparkline(cotes){
+  const pts = cotes.filter(k => k.prix !== null && k.prix !== "").slice()
+    .sort((a,b) => String(a.date||"").localeCompare(String(b.date||"")));
+  if(pts.length < 2) return "";
+  const w=150,h=36,pad=4;
+  const ys = pts.map(k => Number(k.prix));
+  const min = Math.min(...ys), max = Math.max(...ys);
+  const X = i => pad + i*(w-2*pad)/(pts.length-1);
+  const Y = v => max===min ? h/2 : h-pad-(v-min)*(h-2*pad)/(max-min);
+  const poly = pts.map((k,i)=>`${X(i).toFixed(1)},${Y(Number(k.prix)).toFixed(1)}`).join(" ");
+  const dots = pts.map((k,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(Number(k.prix)).toFixed(1)}" r="2" fill="var(--gold-bright)"><title>${esc(k.etat)}${k.version?" · "+esc(k.version):""} — ${fmtEuro(k.prix)}${k.date?" ("+fmtDate(k.date)+")":""}</title></circle>`).join("");
+  return `<svg width="${w}" height="${h}" style="overflow:visible"><polyline points="${poly}" fill="none" stroke="var(--gold)" stroke-width="1.5"/>${dots}</svg>
+    <span>${fmtEuro(min)} → ${fmtEuro(max)} sur ${pts.length} relevés</span>`;
+}
+function renderDetail(){
+  const card = getCard(detailCardId);
+  if(!card) return;
+
+  byId("detailTitle").innerHTML = esc(card.nom) +
+    `<small>${esc(card.extension||"")}${card.numero ? " · "+esc(card.numero) : ""}${card.rarete ? " · "+esc(card.rarete) : ""}</small>`;
+  byId("detailImgWrap").innerHTML = imgTag(card, "");
+  byId("btnWishlist").textContent = card.wishlist ? "★ Wishlist ✓" : "☆ Wishlist";
+  byId("wishForm").style.display = "none";
+
+  // Grille possession
+  const head = byId("ownHead");
+  const body = byId("ownBody");
+  const langues = card.langues || [];
+  const versions = card.versions || [];
+
+  head.innerHTML = `<tr><th>Version</th>${langues.map(l => `
+    <th class="center"><span class="lang-head">${esc(l)}
+      <button class="del-x" title="Supprimer la langue ${esc(l)}" data-del-lang="${esc(l)}">✕</button>
+    </span></th>`).join("")}</tr>`;
+
+  body.innerHTML = versions.map(v => {
+    const isReq = !(card.versionsOpt||[]).includes(v);
+    return `<tr class="${isReq ? "" : "row-opt"}">
+    <td><span class="version-name">
+      <button class="del-x" title="Supprimer la version ${esc(v)}" data-del-version="${esc(v)}">✕</button>
+      <input type="checkbox" class="req-check" data-req-version="${esc(v)}" ${isReq ? "checked" : ""}
+        title="${isReq ? "Compte dans la complétion — décocher pour l'exclure" : "Hors complétion — cocher pour la rendre obligatoire"}">
+      ${versionPill(v)}
+    </span></td>
+    ${langues.map(l => {
+      const p = getPoss(card.id, v, l);
+      const label = p ? possLabel(p) : null;
+      const noteBtn = p
+        ? `<button class="note-btn${label ? " has-note" : ""}" data-note-version="${esc(v)}" data-note-langue="${esc(l)}" title="${esc(possTooltip(p))}">${label ? esc(label) : "+ détails"}</button>`
+        : "";
+      return `<td class="center"><div class="own-cell">
+        <input type="checkbox" class="own-check" data-version="${esc(v)}" data-langue="${esc(l)}" ${p ? "checked" : ""}>
+        ${noteBtn}
+      </div></td>`;
+    }).join("")}
+  </tr>`;
+  }).join("");
+
+  if(versions.length === 0){
+    body.innerHTML = `<tr><td colspan="${langues.length+1}" class="no-rows">Aucune version — ajoute-en une avec « + Version ».</td></tr>`;
+  }
+
+  body.querySelectorAll(".own-check").forEach(chk => {
+    chk.onchange = () => {
+      const v = chk.dataset.version, l = chk.dataset.langue;
+      if(chk.checked){
+        state.possessions.push({ id: uid(), cardId: card.id, version: v, langue: l, etat:null, gradeur:null, grade:null, note:null });
+        toast(`Ajouté : ${v} · ${l}`);
+      } else {
+        state.possessions = state.possessions.filter(p => !(p.cardId === card.id && p.version === v && p.langue === l));
+        toast(`Retiré : ${v} · ${l}`);
+      }
+      saveData(); render(); renderDetail();
+    };
+  });
+  body.querySelectorAll("[data-note-version]").forEach(btn => {
+    btn.onclick = () => openPossModal(btn.dataset.noteVersion, btn.dataset.noteLangue);
+  });
+  // Coche "obligatoire" : inclut/exclut la version de la complétion
+  body.querySelectorAll(".req-check").forEach(chk => {
+    chk.onchange = () => {
+      const v = chk.dataset.reqVersion;
+      card.versionsOpt = card.versionsOpt || [];
+      if(chk.checked){
+        card.versionsOpt = card.versionsOpt.filter(x => x !== v);
+        toast(`« ${v} » compte dans la complétion.`);
+      } else {
+        if(!card.versionsOpt.includes(v)) card.versionsOpt.push(v);
+        toast(`« ${v} » exclue de la complétion.`);
+      }
+      saveData(); render(); renderDetail();
+    };
+  });
+  body.querySelectorAll("[data-del-version]").forEach(btn => {
+    btn.onclick = () => {
+      const v = btn.dataset.delVersion;
+      const nb = state.possessions.filter(p => p.cardId === card.id && p.version === v).length;
+      if(!confirm(`Supprimer la version « ${v} »${nb ? ` (et ${nb} possession(s))` : ""} ?`)) return;
+      card.versions = card.versions.filter(x => x !== v);
+      if(card.versionsOpt) card.versionsOpt = card.versionsOpt.filter(x => x !== v);
+      state.possessions = state.possessions.filter(p => !(p.cardId === card.id && p.version === v));
+      saveData(); render(); renderDetail();
+    };
+  });
+  head.querySelectorAll("[data-del-lang]").forEach(btn => {
+    btn.onclick = () => {
+      const l = btn.dataset.delLang;
+      const nb = state.possessions.filter(p => p.cardId === card.id && p.langue === l).length;
+      if(!confirm(`Supprimer la langue « ${l} »${nb ? ` (et ${nb} possession(s))` : ""} ?`)) return;
+      card.langues = card.langues.filter(x => x !== l);
+      state.possessions = state.possessions.filter(p => !(p.cardId === card.id && p.langue === l));
+      saveData(); render(); renderDetail();
+    };
+  });
+
+  byId("versionForm").style.display = "none";
+  byId("langueForm").style.display = "none";
+
+  // Côtes : historique trié du plus récent au plus ancien + sparkline
+  const cotes = cotesOf(card.id).slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+  byId("sparkZone").innerHTML = sparkline(cotes);
+  const coteBody = byId("coteBody");
+  coteBody.innerHTML = "";
+  cotes.forEach(k => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${esc(k.etat)}</td>
+      <td>${esc(k.version||"—")}</td>
+      <td class="num">${fmtEuro(k.prix)}</td>
+      <td>${esc(k.source||"")}</td>
+      <td class="num">${fmtDate(k.date)}</td>
+      <td><button class="del-x" title="Supprimer">✕</button></td>`;
+    tr.querySelector(".del-x").onclick = () => {
+      state.cotes = state.cotes.filter(x => x.id !== k.id);
+      saveData(); renderDetail(); render();
+    };
+    coteBody.appendChild(tr);
+  });
+  byId("coteEmpty").style.display = cotes.length ? "none" : "block";
+  byId("coteForm").style.display = "none";
+}
+
+/* ---- Modal exemplaire ---- */
+function openPossModal(version, langue){
+  const card = getCard(detailCardId);
+  const p = getPoss(card.id, version, langue);
+  if(!p) return;
+  editingPoss = {version, langue};
+  byId("possSub").textContent = `${card.nom} — ${version} · ${langue}`;
+  byId("p_etat").value = p.etat || "";
+  byId("p_gradeur").value = p.gradeur || "";
+  byId("p_grade").value = p.grade || "";
+  byId("p_note").value = p.note || "";
+  show("possOverlay");
+}
+byId("p_save").onclick = () => {
+  const card = getCard(detailCardId);
+  const p = getPoss(card.id, editingPoss.version, editingPoss.langue);
+  if(!p) return;
+  p.etat = byId("p_etat").value || null;
+  p.gradeur = byId("p_gradeur").value || null;
+  p.grade = byId("p_grade").value.trim() || null;
+  p.note = byId("p_note").value.trim() || null;
+  saveData();
+  hide("possOverlay");
+  renderDetail(); render();
+  toast("Exemplaire mis à jour.");
+};
+
+/* ---- Wishlist ---- */
+byId("btnWishlist").onclick = () => {
+  const card = getCard(detailCardId);
+  byId("w_prio").value = card.wishlist?.prio || 1;
+  byId("w_budget").value = card.wishlist?.budget || "";
+  byId("w_remove").style.display = card.wishlist ? "inline-block" : "none";
+  byId("wishForm").style.display = byId("wishForm").style.display === "none" ? "block" : "none";
+};
+byId("w_cancel").onclick = () => byId("wishForm").style.display = "none";
+byId("w_save").onclick = () => {
+  const card = getCard(detailCardId);
+  card.wishlist = { prio: Number(byId("w_prio").value), budget: byId("w_budget").value || null };
+  saveData(); renderDetail(); render(); toast("Wishlist mise à jour.");
+};
+byId("w_remove").onclick = () => {
+  const card = getCard(detailCardId);
+  delete card.wishlist;
+  saveData(); renderDetail(); render(); toast("Retirée de la wishlist.");
+};
+
+/* ---- Cardmarket ---- */
+byId("btnCardmarket").onclick = () => {
+  const card = getCard(detailCardId);
+  const q = encodeURIComponent([card.nom, card.extension].filter(Boolean).join(" "));
+  window.open(`https://www.cardmarket.com/fr/Pokemon/Products/Search?searchString=${q}`, "_blank");
+};
+
+/* ---- Lightbox ---- */
+byId("detailImgWrap").onclick = () => {
+  const card = getCard(detailCardId);
+  if(!card?.image) return;
+  byId("lightboxImg").src = card.image;
+  show("lightbox");
+};
+byId("lightbox").onclick = () => hide("lightbox");
+
+/* ---- Formulaires version / langue / côte ---- */
+byId("btnAddVersion").onclick = () => {
+  byId("v_nom").value = "";
+  byId("versionForm").style.display = "block";
+  byId("langueForm").style.display = "none";
+  byId("v_nom").focus();
+};
+byId("v_cancel").onclick = () => byId("versionForm").style.display = "none";
+byId("v_save").onclick = () => {
+  const card = getCard(detailCardId);
+  const v = byId("v_nom").value.trim();
+  if(!v){ toast("Indique un nom de version."); return; }
+  if(card.versions.includes(v)){ toast("Cette version existe déjà."); return; }
+  card.versions.push(v);
+  saveData(); renderDetail(); render(); toast("Version ajoutée.");
+};
+byId("btnAddLangue").onclick = () => {
+  byId("langueForm").style.display = "block";
+  byId("versionForm").style.display = "none";
+};
+byId("l_cancel").onclick = () => byId("langueForm").style.display = "none";
+byId("l_save").onclick = () => {
+  const card = getCard(detailCardId);
+  const l = byId("l_nom").value;
+  if(card.langues.includes(l)){ toast("Cette langue existe déjà."); return; }
+  card.langues.push(l);
+  saveData(); renderDetail(); render(); toast("Langue ajoutée.");
+};
+byId("btnAddCote").onclick = () => {
+  const card = getCard(detailCardId);
+  byId("k_etat").value = "Near Mint";
+  byId("k_prix").value = "";
+  byId("k_source").value = "";
+  byId("k_date").value = new Date().toISOString().slice(0,10);
+  byId("k_version").innerHTML = `<option value="">—</option>` +
+    (card.versions||[]).map(v => `<option>${esc(v)}</option>`).join("");
+  byId("coteForm").style.display = "block";
+};
+byId("k_cancel").onclick = () => byId("coteForm").style.display = "none";
+byId("k_save").onclick = () => {
+  const prix = byId("k_prix").value;
+  if(prix === ""){ toast("Indique un prix."); return; }
+  state.cotes.push({
+    id: uid(), cardId: detailCardId,
+    etat: byId("k_etat").value,
+    version: byId("k_version").value || null,
+    prix,
+    source: byId("k_source").value.trim(),
+    date: byId("k_date").value || null
+  });
+  saveData(); renderDetail(); render(); toast("Relevé ajouté.");
+};
+
+/* ============================================================
+   Ajouter / modifier / supprimer une carte
+============================================================ */
+function fillCollectionSelect(){
+  byId("f_collection").innerHTML = COLLECTIONS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+}
+byId("btnAddCard").onclick = () => {
+  editingCardId = null;
+  fillCollectionSelect();
+  byId("f_collection").value = currentCollection;
+  ["f_nom","f_extension","f_numero","f_rarete","f_image"].forEach(id => byId(id).value = "");
+  byId("f_versions").value = "Standard, Reverse";
+  byId("f_langues").value = "FR";
+  byId("cardModalTitle").textContent = "Ajouter une carte";
+  show("cardOverlay");
+};
+byId("btnEditCard").onclick = () => {
+  const card = getCard(detailCardId);
+  if(!card) return;
+  editingCardId = card.id;
+  fillCollectionSelect();
+  byId("f_collection").value = card.collection;
+  byId("f_nom").value = card.nom || "";
+  byId("f_extension").value = card.extension || "";
+  byId("f_numero").value = card.numero || "";
+  byId("f_rarete").value = card.rarete || "";
+  byId("f_image").value = card.image || "";
+  byId("f_versions").value = (card.versions||[]).join(", ");
+  byId("f_langues").value = (card.langues||[]).join(", ");
+  byId("cardModalTitle").textContent = "Modifier la carte";
+  hide("detailOverlay");
+  show("cardOverlay");
+};
+byId("btnSaveCard").onclick = () => {
+  const nom = byId("f_nom").value.trim();
+  if(!nom){ toast("Indique au moins un nom."); return; }
+  const parseList = v => [...new Set(v.split(",").map(s => s.trim()).filter(Boolean))];
+  const versions = parseList(byId("f_versions").value);
+  const langues = parseList(byId("f_langues").value);
+  const payload = {
+    collection: byId("f_collection").value,
+    nom,
+    extension: byId("f_extension").value.trim(),
+    numero: byId("f_numero").value.trim(),
+    rarete: byId("f_rarete").value.trim(),
+    image: byId("f_image").value.trim(),
+    versions: versions.length ? versions : ["Standard"],
+    langues: langues.length ? langues : ["FR"]
+  };
+  if(editingCardId){
+    const card = getCard(editingCardId);
+    state.possessions = state.possessions.filter(p =>
+      p.cardId !== card.id || (payload.versions.includes(p.version) && payload.langues.includes(p.langue))
+    );
+    if(card.versionsOpt) card.versionsOpt = card.versionsOpt.filter(v => payload.versions.includes(v));
+    Object.assign(card, payload);
+    toast("Carte mise à jour.");
+  } else {
+    state.cards.push({ id: uid(), ...payload });
+    toast("Carte ajoutée.");
+  }
+  saveData();
+  currentCollection = payload.collection;
+  hide("cardOverlay");
+  render();
+  if(editingCardId){ openDetail(editingCardId); }
+  editingCardId = null;
+};
+byId("btnDeleteCard").onclick = () => {
+  const card = getCard(detailCardId);
+  if(!card) return;
+  if(!confirm(`Supprimer « ${card.nom} ${card.numero||""} » ainsi que ses possessions et côtes ?`)) return;
+  state.cards = state.cards.filter(c => c.id !== card.id);
+  state.possessions = state.possessions.filter(p => p.cardId !== card.id);
+  state.cotes = state.cotes.filter(k => k.cardId !== card.id);
+  saveData();
+  hide("detailOverlay");
+  toast("Carte supprimée.");
+  render();
+};
+
+/* ============================================================
+   Overlays, recherche, filtres, tri
+============================================================ */
+document.querySelectorAll("[data-close]").forEach(btn => { btn.onclick = () => hide(btn.dataset.close); });
+document.querySelectorAll(".overlay").forEach(ov => {
+  ov.addEventListener("click", e => { if(e.target === ov) hide(ov.id); });
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape"){ ["cardOverlay","detailOverlay","possOverlay","importOverlay","lightbox","syncOverlay","conflictOverlay"].forEach(hide); }
+});
+byId("searchBox").addEventListener("input", e => { currentSearch = e.target.value; render(); });
+document.querySelectorAll(".filter-btn[data-filter]").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".filter-btn[data-filter]").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    render();
+  };
+});
+byId("sortSelect").onchange = e => { currentSort = e.target.value; render(); };
+byId("btnGroup").onclick = () => {
+  groupByExt = !groupByExt;
+  byId("btnGroup").classList.toggle("active", groupByExt);
+  render();
+};
+
+/* ============================================================
+   Export / Import (remplacement ou fusion) / Reset / Images
+============================================================ */
+function doExport(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pokecollec-sauvegarde-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  state.meta.lastExport = Date.now();
+  saveData();
+  toast("Export téléchargé.");
+}
+byId("btnExport").onclick = doExport;
+byId("btnImport").onclick = () => byId("fileImport").click();
+byId("fileImport").onchange = (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.cards || !Array.isArray(data.cards)) throw new Error("Format invalide");
+      pendingImport = data;
+      byId("importInfo").textContent = `${data.cards.length} cartes · ${(data.possessions||[]).length} possessions · ${(data.cotes||[]).length} côtes`;
+      show("importOverlay");
+    }catch(err){ alert("Impossible de lire ce fichier : " + err.message); }
+    e.target.value = "";
+  };
+  reader.readAsText(file);
+};
+function mergeImport(data){
+  const keyOf = c => [c.collection, c.nom, c.numero, c.extension].join("|");
+  const byKey = new Map(state.cards.map(c => [keyOf(c), c]));
+  const idMap = new Map();
+  let addedCards=0, addedPoss=0, addedCotes=0;
+  (data.cards||[]).forEach(c => {
+    const ex = state.cards.find(x => x.id === c.id) || byKey.get(keyOf(c));
+    if(ex){
+      idMap.set(c.id, ex.id);
+      (c.versions||[]).forEach(v => { if(!ex.versions.includes(v)) ex.versions.push(v); });
+      (c.langues||[]).forEach(l => { if(!ex.langues.includes(l)) ex.langues.push(l); });
+      if(!ex.wishlist && c.wishlist) ex.wishlist = c.wishlist;
+      if(!ex.image && c.image) ex.image = c.image;
+    } else {
+      const copy = {...c};
+      state.cards.push(copy);
+      idMap.set(c.id, copy.id);
+      byKey.set(keyOf(copy), copy);
+      addedCards++;
+    }
+  });
+  (data.possessions||[]).forEach(p => {
+    const cid = idMap.get(p.cardId) || p.cardId;
+    if(!state.cards.some(c => c.id === cid)) return;
+    if(!state.possessions.some(q => q.cardId === cid && q.version === p.version && q.langue === p.langue)){
+      state.possessions.push({...p, id: uid(), cardId: cid});
+      addedPoss++;
+    }
+  });
+  (data.cotes||[]).forEach(k => {
+    const cid = idMap.get(k.cardId) || k.cardId;
+    if(!state.cards.some(c => c.id === cid)) return;
+    const dup = state.cotes.some(q => q.cardId === cid && q.etat === k.etat && String(q.prix) === String(k.prix) && (q.date||null) === (k.date||null) && (q.version||null) === (k.version||null));
+    if(!dup){ state.cotes.push({...k, id: uid(), cardId: cid}); addedCotes++; }
+  });
+  return {addedCards, addedPoss, addedCotes};
+}
+byId("importMerge").onclick = () => {
+  if(!pendingImport) return;
+  const r = mergeImport(pendingImport);
+  pendingImport = null;
+  saveData(); hide("importOverlay"); render();
+  toast(`Fusion : +${r.addedCards} cartes, +${r.addedPoss} possessions, +${r.addedCotes} côtes.`);
+};
+byId("importReplace").onclick = () => {
+  if(!pendingImport) return;
+  if(!confirm("Remplacer TOUTES les données actuelles par le fichier ?")) return;
+  state = migrate({ cards: pendingImport.cards||[], possessions: pendingImport.possessions||[], cotes: pendingImport.cotes||[], meta: pendingImport.meta });
+  pendingImport = null;
+  saveData(); hide("importOverlay"); render();
+  toast("Import (remplacement) réussi.");
+};
+byId("btnReset").onclick = () => {
+  if(!confirm("Réinitialiser remplacera TOUTES tes données par la base initiale pokecardex. Exporte d'abord si besoin. Continuer ?")) return;
+  const keepMeta = state.meta;
+  state = migrate(JSON.parse(JSON.stringify(SEED)));
+  state.meta = {...state.meta, ...keepMeta};
+  saveData(); toast("Base réinitialisée."); render();
+};
+function updateLocalImagesBtn(){
+  byId("btnLocalImages").textContent = "🖼 Images locales : " + (state.meta.localImages ? "on" : "off");
+}
+byId("btnLocalImages").onclick = () => {
+  state.meta.localImages = !state.meta.localImages;
+  saveData(); updateLocalImagesBtn(); render();
+  toast(state.meta.localImages
+    ? "Images locales activées (dossier images/ à côté du fichier ; repli CDN sinon)."
+    : "Images chargées depuis le CDN pokecardex.");
+};
+byId("btnLinkFile").onclick = linkFile;
+
+/* ============================================================
+   INIT
+============================================================ */
+setFsStatus();
+restoreHandle();
+initSync();
+updateLocalImagesBtn();
+render();
+</script>
+</body>
+</html>
