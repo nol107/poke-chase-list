@@ -109,6 +109,7 @@
   .slot-num{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);position:absolute;top:6px;left:6px;background:rgba(20,21,28,0.85);padding:2px 7px;border-radius:5px;z-index:2;}
   .slot-status-badge{position:absolute;top:6px;right:6px;z-index:2;display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
   .slot-value{position:absolute;bottom:6px;right:6px;z-index:2;font-family:var(--font-mono);font-size:10px;background:rgba(20,21,28,0.85);color:var(--gold-bright);padding:2px 7px;border-radius:5px;}
+  .slot-value small{font-size:8px;color:var(--text-dim);margin-left:2px;}
   .badge{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:0.03em;white-space:nowrap;}
   .badge.fr{background:rgba(30,60,42,0.92);color:#7fd6a2;}
   .badge.other{background:rgba(72,50,14,0.92);color:#f0b45c;}
@@ -193,7 +194,10 @@
   .note-btn.has-note{border-style:solid;border-color:var(--gold);color:var(--gold-bright);background:rgba(201,169,97,0.08);}
   .version-name{display:inline-flex;align-items:center;gap:8px;}
 
-  .sparkline-wrap{display:flex;align-items:center;gap:10px;margin:4px 0 8px;font-size:11px;color:var(--text-faint);}
+  .sparkline-wrap{display:flex;flex-direction:column;gap:8px;margin:4px 0 8px;font-size:11px;color:var(--text-faint);}
+  .spark-block{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 8px;background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:7px;}
+  .spark-head{display:inline-flex;align-items:center;gap:8px;min-width:120px;}
+  .spark-last{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--gold-bright);}
 
   .subform{background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:8px;padding:12px;margin-top:10px;}
   .subform-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;flex-wrap:wrap;}
@@ -990,7 +994,11 @@ function imgTag(card, cls){
 function latestCote(cardId, opts = {}){
   let ks = cotesOf(cardId);
   if(!ks.length) return null;
-  if(opts.version){
+  if(opts.version !== undefined && opts.strictVersion){
+    // Strict : uniquement les côtes de CETTE version (null = côtes sans version)
+    ks = ks.filter(k => (k.version || null) === (opts.version || null));
+    if(!ks.length) return null;
+  } else if(opts.version){
     const f = ks.filter(k => k.version === opts.version);
     if(f.length) ks = f;
   }
@@ -1001,7 +1009,7 @@ function latestCote(cardId, opts = {}){
   return ks.slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")))[0];
 }
 function possValue(p){
-  const k = latestCote(p.cardId, {etat: p.etat || (isGradedPoss(p) ? "Gradée" : null), version: p.version});
+  const k = latestCote(p.cardId, {etat: p.etat || (isGradedPoss(p) ? "Gradée" : null), version: p.version, strictVersion: true});
   return k ? Number(k.prix) : null;
 }
 function collectionStats(col){
@@ -1018,14 +1026,16 @@ function collectionStats(col){
     const poss = possOf(c.id);
     requiredVersions(c).forEach(v => {
       totalReq++;
-      if(poss.some(p => p.version === v && p.langue === "FR")) reqFr++;
+      const ownedFr = poss.some(p => p.version === v && p.langue === "FR");
+      if(ownedFr) reqFr++;
       if(poss.some(p => p.version === v)) reqAny++;
+      if(!ownedFr){
+        // Estimation de cette version manquante par SA côte (strict)
+        nMissingTotal++;
+        const k = latestCote(c.id, {version: v, strictVersion: true});
+        if(k){ valMissing += Number(k.prix); nMissingValued++; }
+      }
     });
-    if(s==="missing"){
-      nMissingTotal++;
-      const k = latestCote(c.id);
-      if(k){ valMissing += Number(k.prix); nMissingValued++; }
-    }
   });
   state.possessions.forEach(p => {
     const c = getCard(p.cardId);
@@ -1069,7 +1079,7 @@ function renderHeader(){
     <div class="stat-pill"><div class="n">${s.missing}</div><div class="l">Manquantes</div></div>
     <div class="stat-pill gold" title="${s.nOwnedValued}/${s.nOwnedTotal} exemplaire(s) avec côte correspondante">
       <div class="n">${s.nOwnedValued ? fmtEuro(s.valOwned) : "—"}</div><div class="l">Valeur possédée</div></div>
-    <div class="stat-pill" title="Estimation basée sur la dernière côte de chaque carte manquante (${s.nMissingValued}/${s.nMissingTotal} avec côte)">
+    <div class="stat-pill" title="Estimation par version obligatoire manquante en FR, chacune valorisée par sa propre côte (${s.nMissingValued}/${s.nMissingTotal} avec côte)">
       <div class="n">${s.nMissingValued ? fmtEuro(s.valMissing) : "—"}</div><div class="l">Manquantes est.</div></div>
   `;
   const pctFr = s.totalReq ? Math.round(100*s.reqFr/s.totalReq) : 0;
@@ -1283,7 +1293,8 @@ function renderTile(card){
   }).join("");
 
   const k = latestCote(card.id);
-  const valueChip = k ? `<span class="slot-value" title="Dernière côte (${esc(k.etat)}${k.date ? " · "+fmtDate(k.date) : ""})">${fmtEuro(k.prix)}</span>` : "";
+  const vTag = k && k.version ? (k.version.toLowerCase()==="standard" ? "STD" : k.version.toLowerCase()==="reverse" ? "RV" : k.version) : null;
+  const valueChip = k ? `<span class="slot-value" title="Dernière côte${k.version ? " · "+esc(k.version) : ""} (${esc(k.etat)}${k.date ? " · "+fmtDate(k.date) : ""})">${fmtEuro(k.prix)}${vTag ? " <small>"+esc(vTag)+"</small>" : ""}</span>` : "";
 
   el.innerHTML = `
     <div class="card-img-wrap">
@@ -1444,9 +1455,31 @@ function renderDetail(){
   byId("versionForm").style.display = "none";
   byId("langueForm").style.display = "none";
 
-  // Côtes : historique trié du plus récent au plus ancien + sparkline
+  // Côtes : historique groupé PAR VERSION — une courbe et un dernier prix chacune
   const cotes = cotesOf(card.id).slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
-  byId("sparkZone").innerHTML = sparkline(cotes);
+  const byVersion = new Map();
+  cotes.forEach(k => {
+    const key = k.version || "__none__";
+    if(!byVersion.has(key)) byVersion.set(key, []);
+    byVersion.get(key).push(k);
+  });
+  // Ordre : celui des versions de la carte, puis "sans version" à la fin
+  const versionOrder = [...(card.versions||[]).filter(v => byVersion.has(v)),
+                        ...[...byVersion.keys()].filter(k => k !== "__none__" && !(card.versions||[]).includes(k)),
+                        ...(byVersion.has("__none__") ? ["__none__"] : [])];
+  byId("sparkZone").innerHTML = versionOrder.map(key => {
+    const ks = byVersion.get(key);
+    const last = ks[0]; // déjà trié du plus récent au plus ancien
+    const label = key === "__none__"
+      ? `<span class="vpill other" title="Côtes saisies sans version">Sans version</span>`
+      : versionPill(key);
+    return `<div class="spark-block">
+      <div class="spark-head">${label}
+        <span class="spark-last" title="Dernier relevé${last.date ? " ("+fmtDate(last.date)+")" : ""} · ${esc(last.etat)}">${fmtEuro(last.prix)}</span>
+      </div>
+      ${sparkline(ks)}
+    </div>`;
+  }).join("");
   const coteBody = byId("coteBody");
   coteBody.innerHTML = "";
   cotes.forEach(k => {
