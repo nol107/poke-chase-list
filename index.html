@@ -206,9 +206,20 @@
 
   @media (max-width:820px){
     #app{flex-direction:column;}
-    .spine{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto;padding:14px;}
-    .spine-title,.spine-sub,.spine-foot{display:none;}
-    .tab{margin:0 4px;padding:8px 14px;white-space:nowrap;}
+    .spine{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto;padding:10px 14px;align-items:center;}
+    .spine-title,.spine-sub{display:none;}
+    #tabList{display:flex;gap:4px;flex-shrink:0;}
+    .tab{margin:0;padding:8px 12px;white-space:nowrap;font-size:16px;}
+    .tab.active::before{display:none;}
+    .tab-hunt{margin-top:0;border-top:none;padding-top:8px;}
+    .spine-foot{
+      display:flex;flex-direction:row;align-items:center;gap:6px;
+      margin-top:0;padding:0 0 0 12px;margin-left:8px;
+      border-top:none;border-left:1px solid var(--slot-border);
+      flex-shrink:0;
+    }
+    .spine-foot .ghost-btn{white-space:nowrap;font-size:11px;padding:6px 9px;}
+    .spine-foot .fs-status{display:none;}
     main{padding:16px;}
     .view-title{font-size:28px;}
     .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
@@ -219,7 +230,7 @@
 
 <div id="app">
   <nav class="spine">
-    <div class="spine-title">Classeur</div>
+    <div class="spine-title">Le Classeur</div>
     <div class="spine-sub">Suivi de collection</div>
     <div id="tabList"></div>
     <div class="spine-foot">
@@ -473,6 +484,18 @@
       Le token reste stocké sur cet appareil, jamais dans le Gist ni dans le code.
     </div>
     <div id="syncInfo" style="font-size:12px;color:var(--text-dim);margin-bottom:12px;"></div>
+    <div id="magicLinkBlock" style="display:none;margin-bottom:14px;">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-faint);display:block;margin-bottom:6px;">
+        Lien magique — à mettre en favori / écran d'accueil pour éviter de ressaisir le token
+      </label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="s_magicUrl" readonly style="flex:1;background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:7px;padding:9px 10px;color:var(--text-dim);font-size:11px;">
+        <button class="mini-btn" id="s_copyMagic">Copier</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:6px;">
+        ⚠️ Ce lien contient ton token en clair — garde-le pour toi, ne le partage pas, ne le publie pas dans un dépôt public.
+      </div>
+    </div>
     <div class="modal-foot">
       <button class="danger-link" id="s_disconnect" style="display:none;">Déconnecter cet appareil</button>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
@@ -633,6 +656,29 @@ syncCfg = syncCfg || { token:null, gistId:null, lastRemote:null, lastLocalAtSync
 let syncTimer = null, applyingRemote = false, conflictMeta = null;
 
 function saveSyncCfg(){ localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }
+
+// --- Lien magique : encode token+gistId dans l'URL pour reconnecter sans ressaisie
+function buildMagicLink(){
+  const payload = btoa(JSON.stringify({ t: syncCfg.token, g: syncCfg.gistId }));
+  const url = new URL(location.href);
+  url.hash = "sync=" + payload;
+  return url.toString();
+}
+function applyMagicLink(){
+  const m = location.hash.match(/sync=([^&]+)/);
+  if(!m) return;
+  try{
+    const { t, g } = JSON.parse(atob(decodeURIComponent(m[1])));
+    if(t && g){
+      syncCfg.token = t;
+      syncCfg.gistId = g;
+      saveSyncCfg();
+      toast("Connecté via le lien magique.");
+    }
+  }catch(e){ console.error("Lien magique invalide:", e); }
+  // On retire le hash de la barre d'adresse une fois appliqué (le token n'y reste pas affiché)
+  history.replaceState(null, "", location.pathname + location.search);
+}
 function syncConfigured(){ return !!(syncCfg.token && syncCfg.gistId); }
 function setSyncStatus(txt, cls=""){
   const el = byId("syncStatus");
@@ -662,17 +708,30 @@ async function readGistState(g){
   if(f.truncated){ content = await (await fetch(f.raw_url)).text(); }
   return JSON.parse(content);
 }
+let pushInFlight = false, pushPending = false, pushPendingForce = false;
 async function pushToGist(force = false){
   if(!syncConfigured()) return;
+  if(byId("conflictOverlay").classList.contains("show") && !force) return; // conflit en attente de résolution
+  if(pushInFlight){ pushPending = true; pushPendingForce = pushPendingForce || force; return; }
+  pushInFlight = true;
   setSyncStatus("envoi…");
   try{
     const meta = await gistApi("GET", "/gists/" + syncCfg.gistId);
     if(!force && syncCfg.lastRemote && meta.updated_at !== syncCfg.lastRemote){
-      // Le gist a bougé depuis notre dernière synchro : un autre appareil a écrit
-      conflictMeta = meta;
-      openConflict(meta);
-      setSyncStatus("conflit à résoudre", "warn");
-      return;
+      // Le gist a bougé depuis notre dernière synchro. Vrai conflit, ou notre propre
+      // push précédent dont l'horodatage nous a échappé (course) ?
+      const remoteData = await readGistState(meta);
+      const remoteStamp = remoteData?.meta?.updatedAt;
+      if(remoteStamp !== undefined && syncCfg.lastLocalAtSync !== null && remoteStamp <= syncCfg.lastLocalAtSync){
+        // Le contenu distant est le nôtre (ou plus ancien) : on adopte et on continue
+        syncCfg.lastRemote = meta.updated_at;
+        saveSyncCfg();
+      } else {
+        conflictMeta = meta;
+        openConflict(meta);
+        setSyncStatus("conflit à résoudre", "warn");
+        return;
+      }
     }
     const r = await gistApi("PATCH", "/gists/" + syncCfg.gistId, {
       files: { [GIST_FILE]: { content: JSON.stringify(state) } }
@@ -685,6 +744,14 @@ async function pushToGist(force = false){
   }catch(e){
     console.error("Push gist:", e);
     setSyncStatus(navigator.onLine === false ? "hors ligne — reprise auto" : e.message, "warn");
+  }finally{
+    pushInFlight = false;
+    if(pushPending){
+      pushPending = false;
+      const f = pushPendingForce;
+      pushPendingForce = false;
+      pushToGist(f);
+    }
   }
 }
 function schedulePush(){
@@ -784,7 +851,18 @@ function renderSyncModal(){
   byId("syncInfo").textContent = connected
     ? `Connecté au gist ${syncCfg.gistId.slice(0,10)}… — chaque modification est envoyée automatiquement.`
     : "";
+  byId("magicLinkBlock").style.display = connected ? "block" : "none";
+  if(connected) byId("s_magicUrl").value = buildMagicLink();
 }
+byId("s_copyMagic").onclick = async () => {
+  try{
+    await navigator.clipboard.writeText(byId("s_magicUrl").value);
+    toast("Lien copié — ouvre-le sur ton autre appareil, ou mets-le en favori ici.");
+  }catch(e){
+    byId("s_magicUrl").select();
+    toast("Sélectionné — copie avec Ctrl/Cmd+C.");
+  }
+};
 byId("btnSync").onclick = () => { renderSyncModal(); show("syncOverlay"); };
 byId("s_connect").onclick = async () => {
   const token = byId("s_token").value.trim();
@@ -1722,7 +1800,12 @@ byId("btnLinkFile").onclick = linkFile;
 ============================================================ */
 setFsStatus();
 restoreHandle();
+if(!window.showSaveFilePicker){ byId("btnLinkFile").style.display = "none"; }
+applyMagicLink();
 initSync();
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().catch(()=>{});
+}
 updateLocalImagesBtn();
 render();
 </script>
