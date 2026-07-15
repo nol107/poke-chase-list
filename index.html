@@ -241,6 +241,7 @@
       <button class="ghost-btn" id="btnExport">⭳ Exporter (JSON)</button>
       <button class="ghost-btn" id="btnImport">⭱ Importer un fichier</button>
       <button class="ghost-btn" id="btnLocalImages">🖼 Images locales : off</button>
+      <div class="fs-status" id="imgQueueStatus" style="display:none;cursor:pointer;" title="Cliquer pour envoyer immédiatement"></div>
       <button class="ghost-btn" id="btnReset">↺ Réinitialiser la base</button>
       <input type="file" id="fileImport" accept="application/json" style="display:none">
     </div>
@@ -1545,7 +1546,12 @@ byId("detailImgWrap").onclick = () => {
 };
 byId("lightbox").onclick = () => hide("lightbox");
 
-/* ---- Envoi d'une image vers le dépôt GitHub (API Contents) ---- */
+/* ---- Envoi d'images vers le dépôt GitHub : file d'attente + commit groupé ---- */
+const IMG_BATCH_WINDOW_MS = 2 * 60 * 1000; // fenêtre de regroupement : 2 minutes
+let imgQueue = [];          // {path, b64, label}
+let imgQueueTimer = null;
+let imgFlushInFlight = false;
+
 function repoInfo(){
   if(syncCfg.repoOwner && syncCfg.repoName) return { owner: syncCfg.repoOwner, repo: syncCfg.repoName };
   const host = location.hostname; // pseudo.github.io
@@ -1556,14 +1562,89 @@ function repoInfo(){
   }
   return null;
 }
-async function ghUploadImage(pathInRepo, base64, message){
-  const info = repoInfo();
-  if(!info) throw new Error("dépôt GitHub non identifiable depuis cette URL (ouvre l'app via sa page GitHub Pages)");
-  const url = `/repos/${info.owner}/${info.repo}/contents/${pathInRepo}`;
-  let sha;
-  try{ const cur = await gistApi("GET", url); sha = cur.sha; }catch(e){ /* fichier inexistant : création */ }
-  return gistApi("PUT", url, { message, content: base64, ...(sha ? { sha } : {}) });
+function renderImgQueueStatus(){
+  const el = byId("imgQueueStatus");
+  if(!imgQueue.length && !imgFlushInFlight){ el.style.display = "none"; return; }
+  el.style.display = "";
+  el.textContent = imgFlushInFlight
+    ? "⇧ Envoi du commit groupé…"
+    : `⇧ ${imgQueue.length} image(s) en attente — cliquer pour envoyer`;
 }
+function persistImgQueue(){ idb.set("imgQueue", imgQueue).catch(()=>{}); }
+function scheduleImgFlush(delayMs){
+  if(imgQueueTimer) return; // une fenêtre est déjà ouverte : l'échéance de la 1re image fait foi
+  imgQueueTimer = setTimeout(() => { imgQueueTimer = null; flushImageQueue(); },
+    delayMs !== undefined ? delayMs : IMG_BATCH_WINDOW_MS);
+}
+function queueImage(path, b64, label){
+  const i = imgQueue.findIndex(q => q.path === path);
+  if(i !== -1) imgQueue[i] = { path, b64, label };   // ré-upload de la même carte : on remplace
+  else imgQueue.push({ path, b64, label });
+  persistImgQueue();
+  renderImgQueueStatus();
+  scheduleImgFlush();
+}
+async function flushImageQueue(){
+  if(imgFlushInFlight || !imgQueue.length) return;
+  if(!syncCfg.token){ renderImgQueueStatus(); return; }
+  imgFlushInFlight = true;
+  const batch = imgQueue.slice();
+  renderImgQueueStatus();
+  try{
+    const info = repoInfo();
+    if(!info) throw new Error("dépôt GitHub non identifiable depuis cette URL");
+    const base = `/repos/${info.owner}/${info.repo}`;
+    // 1. Référence de branche (main, sinon master)
+    let ref;
+    try{ ref = await gistApi("GET", `${base}/git/ref/heads/main`); }
+    catch(e){ ref = await gistApi("GET", `${base}/git/ref/heads/master`); }
+    const branch = ref.ref.replace("refs/heads/", "");
+    const baseCommit = await gistApi("GET", `${base}/git/commits/${ref.object.sha}`);
+    // 2. Un blob par image
+    const treeEntries = [];
+    for(const item of batch){
+      const blob = await gistApi("POST", `${base}/git/blobs`, { content: item.b64, encoding: "base64" });
+      treeEntries.push({ path: item.path, mode: "100644", type: "blob", sha: blob.sha });
+    }
+    // 3. Arbre + commit unique + avancée de la branche
+    const tree = await gistApi("POST", `${base}/git/trees`, { base_tree: baseCommit.tree.sha, tree: treeEntries });
+    const commit = await gistApi("POST", `${base}/git/commits`, {
+      message: (`Images (${batch.length}) : ` + batch.map(b => b.label).join(", ")).slice(0, 180),
+      tree: tree.sha,
+      parents: [ref.object.sha]
+    });
+    await gistApi("PATCH", `${base}/git/refs/heads/${branch}`, { sha: commit.sha, force: false });
+    // 4. Retirer de la file ce qui vient de partir (les ajouts pendant l'envoi restent)
+    imgQueue = imgQueue.filter(q => !batch.some(b => b.path === q.path && b.b64 === q.b64));
+    persistImgQueue();
+    toast(`${batch.length} image(s) envoyée(s) en un commit ✓ — en ligne d'ici ~2 min.`);
+  }catch(err){
+    console.error("Commit groupé images:", err);
+    toast("Envoi groupé impossible (" + err.message + ") — nouvelle tentative dans 2 min.");
+    scheduleImgFlush(); // on retente, la file est conservée
+  }finally{
+    imgFlushInFlight = false;
+    renderImgQueueStatus();
+    if(imgQueue.length) scheduleImgFlush();
+  }
+}
+byId("imgQueueStatus").onclick = () => {
+  clearTimeout(imgQueueTimer); imgQueueTimer = null;
+  flushImageQueue();
+};
+// Restaurer une file interrompue (onglet fermé avant l'envoi) : reprise 3 s après ouverture
+(async () => {
+  try{
+    const q = await idb.get("imgQueue");
+    if(q && q.length){ imgQueue = q; renderImgQueueStatus(); scheduleImgFlush(3000); }
+  }catch(e){}
+})();
+window.addEventListener("beforeunload", (e) => {
+  if(imgQueue.length && !imgFlushInFlight){
+    // La file est persistée : rien n'est perdu, mais l'envoi attendra la prochaine ouverture
+    e.preventDefault(); e.returnValue = "";
+  }
+});
 function fileToJpegBase64(file, maxH = 1200){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1593,17 +1674,16 @@ byId("uploadImgInput").onchange = async (e) => {
   if(!file || !detailCardId) return;
   const card = getCard(detailCardId);
   try{
-    toast("Envoi de l'image vers GitHub…");
     const b64 = await fileToJpegBase64(file);
-    await ghUploadImage(`images/${card.id}.jpg`, b64, `Image ${card.id} (${card.nom})`);
-    // Affichage immédiat, sans attendre le redéploiement Pages (~2 min)
+    queueImage(`images/${card.id}.jpg`, b64, card.id);
+    // Affichage immédiat, sans attendre le commit ni le déploiement Pages
     const shown = byId("detailImgWrap").querySelector("img");
     if(shown){ shown.style.display = ""; shown.dataset.i = "0"; shown.src = URL.createObjectURL(file); }
     if(!state.meta.localImages){ state.meta.localImages = true; updateLocalImagesBtn(); saveData(); }
-    toast("Image envoyée ✓ — visible sur tous tes appareils d'ici ~2 min.");
+    toast(`Image ajoutée à la file (${imgQueue.length}) — commit groupé sous 2 min, ou clic sur le statut à gauche.`);
   }catch(err){
-    console.error("Upload image:", err);
-    alert("Envoi impossible : " + err.message + "\nVérifie que ton token GitHub a bien le scope « repo » en plus de « gist ».");
+    console.error("Préparation image:", err);
+    alert("Impossible de préparer l'image : " + err.message);
   }
 };
 
