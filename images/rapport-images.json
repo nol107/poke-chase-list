@@ -1,0 +1,180 @@
+{
+  "setsAssocies": {
+    "151": "sv03.5",
+    "EX : Émeraude": "ex9",
+    "Équilibre Parfait": "me03",
+    "Héros Transcendants": "me02.5",
+    "Flammes Fantasmagoriques": "me02",
+    "Forces Temporelles": "sv05",
+    "Destinées de Paldea": "sv04.5",
+    "Origine Perdue": "swsh11",
+    "Poing de Fusion": "swsh8",
+    "Règne de Glace": "swsh6",
+    "Épée et Bouclier": "swsh1",
+    "Alliance Infaillible": "sm10",
+    "Duo de Choc": "sm9",
+    "Invasion Carmin": "sm4",
+    "Générations": "g1",
+    "Impulsion Turbo": "xy8",
+    "Vigueur Spectrale": "xy4",
+    "Platine : Arceus": "pl1 (non vérifié)",
+    "Platine : Rivaux Émergeants": "pl2",
+    "Diamant & Perle : Tempête": "dp7",
+    "Diamant & Perle": "dp1",
+    "EX : Créateurs de Légendes": "ex12",
+    "EX : Rouge Feu & Vert Feuille": "ex6",
+    "Expedition": "ecard1",
+    "Neo Destiny": "neo4",
+    "Fossile": "base3",
+    "Jumbo": "jumbo (non vérifié)",
+    "Tonnerre Perdu": "sm8",
+    "Tempête Céleste": "sm7",
+    "Origines Antiques": "xy7",
+    "Primo-Choc": "xy5",
+    "Glaciation Plasma": "bw9",
+    "Diamant & Perle : Duels au Sommet": "dp1 (non vérifié)",
+    "EX : Gardiens de Cristal": "ex14",
+    "EX : Team Magma VS Team Aqua": "ex4",
+    "EX : Rubis & Saphir": "ex1"
+  },
+  "extensionsNonTrouvees": [
+    {
+      "extension": "HS : Triomphe",
+      "cartes": [
+        "ecto-30"
+      ]
+    },
+    {
+      "extension": "Skyridge",
+      "cartes": [
+        "ecto-39",
+        "ecto-40"
+      ]
+    },
+    {
+      "extension": "Legendary Collection",
+      "cartes": [
+        "ecto-43"
+      ]
+    },
+    {
+      "extension": "Gym Challenge",
+      "cartes": [
+        "ecto-45"
+      ]
+    },
+    {
+      "extension": "Gym Heroes",
+      "cartes": [
+        "ecto-46"
+      ]
+    },
+    {
+      "extension": "Trick or Trade 2024",
+      "cartes": [
+        "ecto-49"
+      ]
+    },
+    {
+      "extension": "Trick or Trade 2023",
+      "cartes": [
+        "ecto-50"
+      ]
+    },
+    {
+      "extension": "Trick or Trade 2022",
+      "cartes": [
+        "ecto-51"
+      ]
+    },
+    {
+      "extension": "Pack Récompense",
+      "cartes": [
+        "ecto-52",
+        "ecto-53",
+        "ecto-54"
+      ]
+    },
+    {
+      "extension": "World Championships 2009",
+      "cartes": [
+        "ecto-56"
+      ]
+    },
+    {
+      "extension": "Topps",
+      "cartes": [
+        "ecto-57"
+      ]
+    },
+    {
+      "extension": "Lamincards 2005",
+      "cartes": [
+        "ecto-58"
+      ]
+    },
+    {
+      "extension": "POP 4",
+      "cartes": [
+        "jgk-22"
+      ]
+    },
+    {
+      "extension": "POP 1",
+      "cartes": [
+        "jgk-23"
+      ]
+    },
+    {
+      "extension": "Lamincards 2006",
+      "cartes": [
+        "jgk-24"
+      ]
+    }
+  ],
+  "cartesSansScan": [
+    {
+      "id": "ecto-11",
+      "nom": "Ectoplasma",
+      "extension": "Origine Perdue",
+      "numero": "TG06/TG30"
+    },
+    {
+      "id": "ecto-17",
+      "nom": "Ectoplasma",
+      "extension": "Alliance Infaillible",
+      "numero": "70/214"
+    },
+    {
+      "id": "ecto-35",
+      "nom": "Ectoplasma",
+      "extension": "Diamant & Perle : Tempête",
+      "numero": "18/100"
+    },
+    {
+      "id": "jgk-15",
+      "nom": "Jungko",
+      "extension": "Diamant & Perle : Tempête",
+      "numero": "10/100"
+    },
+    {
+      "id": "ecto-36",
+      "nom": "Ectoplasma",
+      "extension": "Diamant & Perle",
+      "numero": "27/130"
+    },
+    {
+      "id": "ecto-55",
+      "nom": "Ectoplasma-EX",
+      "extension": "Jumbo",
+      "numero": "34/119"
+    },
+    {
+      "id": "jgk-16",
+      "nom": "Jungko",
+      "extension": "Diamant & Perle : Duels au Sommet",
+      "numero": "8/106"
+    }
+  ],
+  "echecs": []
+}

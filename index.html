@@ -109,7 +109,6 @@
   .slot-num{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);position:absolute;top:6px;left:6px;background:rgba(20,21,28,0.85);padding:2px 7px;border-radius:5px;z-index:2;}
   .slot-status-badge{position:absolute;top:6px;right:6px;z-index:2;display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
   .slot-value{position:absolute;bottom:6px;right:6px;z-index:2;font-family:var(--font-mono);font-size:10px;background:rgba(20,21,28,0.85);color:var(--gold-bright);padding:2px 7px;border-radius:5px;}
-  .slot-value small{font-size:8px;color:var(--text-dim);margin-left:2px;}
   .badge{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:0.03em;white-space:nowrap;}
   .badge.fr{background:rgba(30,60,42,0.92);color:#7fd6a2;}
   .badge.other{background:rgba(72,50,14,0.92);color:#f0b45c;}
@@ -194,10 +193,7 @@
   .note-btn.has-note{border-style:solid;border-color:var(--gold);color:var(--gold-bright);background:rgba(201,169,97,0.08);}
   .version-name{display:inline-flex;align-items:center;gap:8px;}
 
-  .sparkline-wrap{display:flex;flex-direction:column;gap:8px;margin:4px 0 8px;font-size:11px;color:var(--text-faint);}
-  .spark-block{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 8px;background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:7px;}
-  .spark-head{display:inline-flex;align-items:center;gap:8px;min-width:120px;}
-  .spark-last{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--gold-bright);}
+  .sparkline-wrap{display:flex;align-items:center;gap:10px;margin:4px 0 8px;font-size:11px;color:var(--text-faint);}
 
   .subform{background:var(--bg-panel-2);border:1px solid var(--slot-border);border-radius:8px;padding:12px;margin-top:10px;}
   .subform-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;flex-wrap:wrap;}
@@ -296,6 +292,8 @@
         <div class="detail-actions">
           <button class="mini-btn" id="btnCardmarket">↗ Cardmarket</button>
           <button class="mini-btn" id="btnWishlist">☆ Wishlist</button>
+          <button class="mini-btn" id="btnUploadImg" title="Envoyer un scan vers le dossier images/ du dépôt GitHub">⇧ Image</button>
+          <input type="file" id="uploadImgInput" accept="image/*" style="display:none">
         </div>
         <div class="subform" id="wishForm" style="display:none;">
           <div class="field-row">
@@ -700,7 +698,7 @@ async function gistApi(method, path, body){
     body: body ? JSON.stringify(body) : undefined
   });
   if(!res.ok){
-    const detail = res.status === 401 ? "token invalide ou expiré" : res.status === 404 ? "gist introuvable" : "erreur " + res.status;
+    const detail = res.status === 401 ? "token invalide ou expiré" : res.status === 404 ? "introuvable (gist ou dépôt)" : "erreur " + res.status;
     throw new Error(detail);
   }
   return res.json();
@@ -980,10 +978,19 @@ function versionPill(v, extra=""){
 function imgSrc(card){
   return state.meta.localImages ? `images/${card.id}.jpg` : (card.image || "");
 }
+// Repli en chaîne : images/{id}.jpg → .webp → .png → CDN pokecardex → masqué
+window.imgFallback = function(el){
+  const alts = (el.dataset.alts || "").split("|").filter(Boolean);
+  const i = parseInt(el.dataset.i || "0", 10);
+  if(i < alts.length){ el.dataset.i = i + 1; el.src = alts[i]; }
+  else { el.style.display = "none"; }
+};
 function imgTag(card, cls){
   const cdn = esc(card.image || "");
-  if(state.meta.localImages && cdn){
-    return `<img class="${cls}" loading="lazy" src="images/${esc(card.id)}.jpg" alt="${esc(card.nom)}" onerror="this.onerror=null;this.src='${cdn}'">`;
+  if(state.meta.localImages){
+    const id = esc(card.id);
+    const alts = [`images/${id}.webp`, `images/${id}.png`, cdn].filter(Boolean).join("|");
+    return `<img class="${cls}" loading="lazy" src="images/${id}.jpg" alt="${esc(card.nom)}" data-alts="${alts}" onerror="imgFallback(this)">`;
   }
   return `<img class="${cls}" loading="lazy" src="${cdn}" alt="${esc(card.nom)}" onerror="this.style.display='none'">`;
 }
@@ -994,11 +1001,7 @@ function imgTag(card, cls){
 function latestCote(cardId, opts = {}){
   let ks = cotesOf(cardId);
   if(!ks.length) return null;
-  if(opts.version !== undefined && opts.strictVersion){
-    // Strict : uniquement les côtes de CETTE version (null = côtes sans version)
-    ks = ks.filter(k => (k.version || null) === (opts.version || null));
-    if(!ks.length) return null;
-  } else if(opts.version){
+  if(opts.version){
     const f = ks.filter(k => k.version === opts.version);
     if(f.length) ks = f;
   }
@@ -1009,7 +1012,7 @@ function latestCote(cardId, opts = {}){
   return ks.slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")))[0];
 }
 function possValue(p){
-  const k = latestCote(p.cardId, {etat: p.etat || (isGradedPoss(p) ? "Gradée" : null), version: p.version, strictVersion: true});
+  const k = latestCote(p.cardId, {etat: p.etat || (isGradedPoss(p) ? "Gradée" : null), version: p.version});
   return k ? Number(k.prix) : null;
 }
 function collectionStats(col){
@@ -1026,16 +1029,14 @@ function collectionStats(col){
     const poss = possOf(c.id);
     requiredVersions(c).forEach(v => {
       totalReq++;
-      const ownedFr = poss.some(p => p.version === v && p.langue === "FR");
-      if(ownedFr) reqFr++;
+      if(poss.some(p => p.version === v && p.langue === "FR")) reqFr++;
       if(poss.some(p => p.version === v)) reqAny++;
-      if(!ownedFr){
-        // Estimation de cette version manquante par SA côte (strict)
-        nMissingTotal++;
-        const k = latestCote(c.id, {version: v, strictVersion: true});
-        if(k){ valMissing += Number(k.prix); nMissingValued++; }
-      }
     });
+    if(s==="missing"){
+      nMissingTotal++;
+      const k = latestCote(c.id);
+      if(k){ valMissing += Number(k.prix); nMissingValued++; }
+    }
   });
   state.possessions.forEach(p => {
     const c = getCard(p.cardId);
@@ -1079,7 +1080,7 @@ function renderHeader(){
     <div class="stat-pill"><div class="n">${s.missing}</div><div class="l">Manquantes</div></div>
     <div class="stat-pill gold" title="${s.nOwnedValued}/${s.nOwnedTotal} exemplaire(s) avec côte correspondante">
       <div class="n">${s.nOwnedValued ? fmtEuro(s.valOwned) : "—"}</div><div class="l">Valeur possédée</div></div>
-    <div class="stat-pill" title="Estimation par version obligatoire manquante en FR, chacune valorisée par sa propre côte (${s.nMissingValued}/${s.nMissingTotal} avec côte)">
+    <div class="stat-pill" title="Estimation basée sur la dernière côte de chaque carte manquante (${s.nMissingValued}/${s.nMissingTotal} avec côte)">
       <div class="n">${s.nMissingValued ? fmtEuro(s.valMissing) : "—"}</div><div class="l">Manquantes est.</div></div>
   `;
   const pctFr = s.totalReq ? Math.round(100*s.reqFr/s.totalReq) : 0;
@@ -1293,8 +1294,7 @@ function renderTile(card){
   }).join("");
 
   const k = latestCote(card.id);
-  const vTag = k && k.version ? (k.version.toLowerCase()==="standard" ? "STD" : k.version.toLowerCase()==="reverse" ? "RV" : k.version) : null;
-  const valueChip = k ? `<span class="slot-value" title="Dernière côte${k.version ? " · "+esc(k.version) : ""} (${esc(k.etat)}${k.date ? " · "+fmtDate(k.date) : ""})">${fmtEuro(k.prix)}${vTag ? " <small>"+esc(vTag)+"</small>" : ""}</span>` : "";
+  const valueChip = k ? `<span class="slot-value" title="Dernière côte (${esc(k.etat)}${k.date ? " · "+fmtDate(k.date) : ""})">${fmtEuro(k.prix)}</span>` : "";
 
   el.innerHTML = `
     <div class="card-img-wrap">
@@ -1455,31 +1455,9 @@ function renderDetail(){
   byId("versionForm").style.display = "none";
   byId("langueForm").style.display = "none";
 
-  // Côtes : historique groupé PAR VERSION — une courbe et un dernier prix chacune
+  // Côtes : historique trié du plus récent au plus ancien + sparkline
   const cotes = cotesOf(card.id).slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
-  const byVersion = new Map();
-  cotes.forEach(k => {
-    const key = k.version || "__none__";
-    if(!byVersion.has(key)) byVersion.set(key, []);
-    byVersion.get(key).push(k);
-  });
-  // Ordre : celui des versions de la carte, puis "sans version" à la fin
-  const versionOrder = [...(card.versions||[]).filter(v => byVersion.has(v)),
-                        ...[...byVersion.keys()].filter(k => k !== "__none__" && !(card.versions||[]).includes(k)),
-                        ...(byVersion.has("__none__") ? ["__none__"] : [])];
-  byId("sparkZone").innerHTML = versionOrder.map(key => {
-    const ks = byVersion.get(key);
-    const last = ks[0]; // déjà trié du plus récent au plus ancien
-    const label = key === "__none__"
-      ? `<span class="vpill other" title="Côtes saisies sans version">Sans version</span>`
-      : versionPill(key);
-    return `<div class="spark-block">
-      <div class="spark-head">${label}
-        <span class="spark-last" title="Dernier relevé${last.date ? " ("+fmtDate(last.date)+")" : ""} · ${esc(last.etat)}">${fmtEuro(last.prix)}</span>
-      </div>
-      ${sparkline(ks)}
-    </div>`;
-  }).join("");
+  byId("sparkZone").innerHTML = sparkline(cotes);
   const coteBody = byId("coteBody");
   coteBody.innerHTML = "";
   cotes.forEach(k => {
@@ -1558,11 +1536,76 @@ byId("btnCardmarket").onclick = () => {
 /* ---- Lightbox ---- */
 byId("detailImgWrap").onclick = () => {
   const card = getCard(detailCardId);
-  if(!card?.image) return;
-  byId("lightboxImg").src = card.image;
+  if(!card) return;
+  const shown = byId("detailImgWrap").querySelector("img");
+  const src = (shown && shown.src && shown.style.display !== "none") ? shown.src : (card.image || "");
+  if(!src) return;
+  byId("lightboxImg").src = src;
   show("lightbox");
 };
 byId("lightbox").onclick = () => hide("lightbox");
+
+/* ---- Envoi d'une image vers le dépôt GitHub (API Contents) ---- */
+function repoInfo(){
+  if(syncCfg.repoOwner && syncCfg.repoName) return { owner: syncCfg.repoOwner, repo: syncCfg.repoName };
+  const host = location.hostname; // pseudo.github.io
+  if(host.endsWith(".github.io")){
+    const owner = host.split(".")[0];
+    const seg = location.pathname.split("/").filter(Boolean);
+    return { owner, repo: seg.length ? seg[0] : owner + ".github.io" };
+  }
+  return null;
+}
+async function ghUploadImage(pathInRepo, base64, message){
+  const info = repoInfo();
+  if(!info) throw new Error("dépôt GitHub non identifiable depuis cette URL (ouvre l'app via sa page GitHub Pages)");
+  const url = `/repos/${info.owner}/${info.repo}/contents/${pathInRepo}`;
+  let sha;
+  try{ const cur = await gistApi("GET", url); sha = cur.sha; }catch(e){ /* fichier inexistant : création */ }
+  return gistApi("PUT", url, { message, content: base64, ...(sha ? { sha } : {}) });
+}
+function fileToJpegBase64(file, maxH = 1200){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxH / img.height);
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * scale));
+      cv.height = Math.max(1, Math.round(img.height * scale));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(img.src);
+      resolve(cv.toDataURL("image/jpeg", 0.87).split(",")[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error("image illisible")); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+byId("btnUploadImg").onclick = () => {
+  if(!syncCfg.token){
+    alert("Connecte d'abord la synchro GitHub : le même token sert à envoyer les images (scopes « gist » + « repo » requis).");
+    return;
+  }
+  byId("uploadImgInput").click();
+};
+byId("uploadImgInput").onchange = async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if(!file || !detailCardId) return;
+  const card = getCard(detailCardId);
+  try{
+    toast("Envoi de l'image vers GitHub…");
+    const b64 = await fileToJpegBase64(file);
+    await ghUploadImage(`images/${card.id}.jpg`, b64, `Image ${card.id} (${card.nom})`);
+    // Affichage immédiat, sans attendre le redéploiement Pages (~2 min)
+    const shown = byId("detailImgWrap").querySelector("img");
+    if(shown){ shown.style.display = ""; shown.dataset.i = "0"; shown.src = URL.createObjectURL(file); }
+    if(!state.meta.localImages){ state.meta.localImages = true; updateLocalImagesBtn(); saveData(); }
+    toast("Image envoyée ✓ — visible sur tous tes appareils d'ici ~2 min.");
+  }catch(err){
+    console.error("Upload image:", err);
+    alert("Envoi impossible : " + err.message + "\nVérifie que ton token GitHub a bien le scope « repo » en plus de « gist ».");
+  }
+};
 
 /* ---- Formulaires version / langue / côte ---- */
 byId("btnAddVersion").onclick = () => {
